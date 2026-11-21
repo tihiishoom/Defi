@@ -203,7 +203,7 @@ public func separateInfeasibleStacks(
   while columnIndex < workspace.columns.count {
     defer { columnIndex += 1 }
     var column = workspace.columns[columnIndex]
-    guard column.windows.count > 1,
+    guard !column.isTabbed, column.windows.count > 1,
       excludingWindowIDs.isDisjoint(with: column.windows),
       !fits(column.windows[...])
     else { continue }

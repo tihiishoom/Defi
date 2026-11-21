@@ -52,4 +52,20 @@ struct TabbedColumnTests {
     #expect(workspace.columns[0].isTabbed)
     #expect(workspace.columns[0].focusedWindow == 1)
   }
+  @Test func `Tall tabs stay joined during constraint reconciliation`() {
+    let ids = [WindowID(rawValue: 1), WindowID(rawValue: 2)]
+    var workspace = Workspace(id: WorkspaceID(rawValue: "1"))
+    var column = Column(windows: ids, focusedWindow: 0, width: .fraction(0.5))
+    column.display = .tabbed
+    workspace.columns = [column]
+    let windows = Dictionary(uniqueKeysWithValues: ids.map { id in
+      (id, Window(id: id, appID: "app", title: "Window", frame: .init(x: 0, y: 0, width: 500, height: 600),
+        minimumTiledHeight: 600))
+    })
+    #expect(!separateInfeasibleStacks(in: &workspace,
+      viewport: .init(x: 0, y: 0, width: 1000, height: 800), windowsByID: windows, settings: LayoutSettings()))
+    #expect(workspace.columns.count == 1)
+    #expect(workspace.columns[0].windows == ids)
+  }
+
 }
