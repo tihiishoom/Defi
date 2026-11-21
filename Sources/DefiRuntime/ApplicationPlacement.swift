@@ -15,6 +15,7 @@ public struct ApplicationPlacement: Codable, Equatable, Sendable {
   public var width: ColumnWidth?
   public var floatingFrame: Rect?
   public var stackIndex: Int?
+  public var stackHeightFraction: Double?
 }
 
 extension RuntimeState {
@@ -126,6 +127,7 @@ extension RuntimeState {
           into: &monitors[target.monitorIndex].workspaces[target.workspaceIndex],
           settings: layout, focusInsertedWindow: false, insertionIndex: index)
       }
+      window.stackHeightFraction = placement.stackHeightFraction
       window.monitorID = monitors[target.monitorIndex].id
       if window.floatingOrigin == .user && !window.floating { window.floatingOrigin = nil }
       windows[id] = window
@@ -291,7 +293,8 @@ extension RuntimeState {
         applicationPlacements[$0].workspaceID == workspace.id
           ? applicationPlacements[$0].columnIndex : nil
       } ?? columnIndex,
-      width: width, floatingFrame: width == nil ? window.frame : nil
+      width: width, floatingFrame: width == nil ? window.frame : nil,
+      stackHeightFraction: window.stackHeightFraction
     )
     if let index {
       applicationPlacements[index] = placement

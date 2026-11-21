@@ -37,6 +37,9 @@ public enum Command: Equatable, Codable, Sendable {
   case moveWorkspaceToMonitor(Direction)
   case focusMonitor(Direction)
   case cycleWidth(Direction)
+  case setWindowHeight(Double)
+  case cycleWindowHeight(Direction)
+  case resetWindowHeight
   case maximizeColumn
   case centerColumn
   case toggleFloating
@@ -50,7 +53,7 @@ public enum Command: Equatable, Codable, Sendable {
 
   public var editsSelectedLayout: Bool {
     switch self {
-    case .cycleWidth, .maximizeColumn, .moveColumn, .moveWindow,
+    case .setWindowHeight, .cycleWindowHeight, .resetWindowHeight, .cycleWidth, .maximizeColumn, .moveColumn, .moveWindow,
       .joinWindow, .unjoinWindows, .toggleFloating:
       true
     default:
@@ -64,7 +67,7 @@ public enum Command: Equatable, Codable, Sendable {
 
   public var resizesManagedLayout: Bool {
     switch self {
-    case .cycleWidth, .maximizeColumn, .joinWindow, .unjoinWindows,
+    case .setWindowHeight, .cycleWindowHeight, .resetWindowHeight, .cycleWidth, .maximizeColumn, .joinWindow, .unjoinWindows,
       .moveColumnToMonitor, .moveWindowToMonitor, .moveWorkspaceToMonitor:
       true
     default:

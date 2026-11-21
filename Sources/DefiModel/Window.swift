@@ -19,6 +19,7 @@ public struct Window: Equatable, Codable, Sendable {
   public var maximumTiledWidth: Double?
   public var minimumTiledHeight: Double?
   public var maximumTiledHeight: Double?
+  public var stackHeightFraction: Double?
   public var tiledSizeAcceptance: TiledSizeAcceptance?
 
   public init(
