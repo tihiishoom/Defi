@@ -209,6 +209,8 @@ extension Daemon {
   }
 
   func scheduleDisplayReconciliation() {
+    dragEdgeScroll.reset()
+    dragEdgeScrollAnchor = nil
     invalidateDisplayArrangement()
     closeOverview()
     handleCheatsheetInput(.dismiss)

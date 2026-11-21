@@ -30,6 +30,9 @@ public struct WindowProxyMonitor: Equatable, Sendable {
 
 @NavigationActor
 public final class MacOSPlatform {
+  nonisolated let fileDragTracker = FileDragTracker()
+  public var isFileDragActive: Bool { isLeftMouseButtonDown && fileDragTracker.isActive }
+
   public var windowProxiesEnabled = false {
     didSet { RibbonProxyPresenter.enabled = windowProxiesEnabled }
   }

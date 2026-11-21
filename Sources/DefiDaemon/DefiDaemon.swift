@@ -178,6 +178,12 @@ final class Daemon {
   var mouseGestureChangedWindowFrame = false
   /// The drop the overlay is previewing during a drag; applied for real on release.
   var proxyPreviewTarget: MouseDropTarget?
+  var dragEdgeScroll = DragEdgeScrollState()
+  var dragEdgeScrollAnchor: WorkspaceScrollAnchor?
+  var dragEdgeScrollSelection: WindowID?
+  var dragEdgeScrollCommandGeneration: UInt64 = 0
+  var dragEdgeScrollInputTimestamp: TimeInterval = 0
+  var dragEdgeScrollPreviewDirty = false
   var mouseGestureInitialFrame: Rect?
   var mouseGestureScrollAnchor: WorkspaceScrollAnchor?
   var mouseGestureDisplayedOriginFrames: [WindowID: Rect] = [:]
@@ -406,6 +412,7 @@ final class Daemon {
       platform.requestFrameRefresh(for: mouseGestureSettlement.windowID)
       needsDesktopSync = true
     }
+    updateDragEdgeScroll(now: now)
     let liveBorderGesture = platform.isLeftMouseButtonDown
     // The overlay stretches the ribbon until release, which learns the width. A snapshot
     // meanwhile waited on the WindowServer, busy with the live resize, while holding the

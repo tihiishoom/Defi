@@ -110,6 +110,15 @@ public struct Config: Equatable, Sendable {
     guard (0...1_000).contains(input.focusFollowsMouseDelayMS) else {
       throw ConfigError.invalidValue("input.focus_follows_mouse_delay_ms")
     }
+    guard input.dragEdgeScrollZone.isFinite, (1...128).contains(input.dragEdgeScrollZone) else {
+      throw ConfigError.invalidValue("input.drag_edge_scroll_zone")
+    }
+    guard (0...2_000).contains(input.dragEdgeScrollDelayMS) else {
+      throw ConfigError.invalidValue("input.drag_edge_scroll_delay_ms")
+    }
+    guard input.dragEdgeScrollMaxSpeed.isFinite, (1...3_000).contains(input.dragEdgeScrollMaxSpeed) else {
+      throw ConfigError.invalidValue("input.drag_edge_scroll_max_speed")
+    }
     guard (0.05...1).contains(layout.defaultColumnWidth) else {
       throw ConfigError.invalidValue("layout.default_column_width")
     }

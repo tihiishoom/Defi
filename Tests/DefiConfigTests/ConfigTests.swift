@@ -114,6 +114,9 @@ struct ConfigTests {
     ("[overview]\nwindow_corner_radius = 65", .invalidValue("overview.window_corner_radius")),
     ("[decorations.borders]\nwidth = 65", .invalidValue("decorations.borders.width")),
     ("[decorations.borders]\ncolor = \"ffffff\"", .invalidValue("decorations.borders.color")),
+    ("[input]\ndrag_edge_scroll_zone = 0", .invalidValue("input.drag_edge_scroll_zone")),
+    ("[input]\ndrag_edge_scroll_delay_ms = -1", .invalidValue("input.drag_edge_scroll_delay_ms")),
+    ("[input]\ndrag_edge_scroll_max_speed = 3001", .invalidValue("input.drag_edge_scroll_max_speed")),
     ("[input]\nfocus_follows_mouse_delay_ms = -1", .invalidValue("input.focus_follows_mouse_delay_ms")),
     ("[input]\nfocus_follows_mouse_max_scroll_amount = -0.1",
       .invalidValue("input.focus_follows_mouse_max_scroll_amount")),
@@ -169,6 +172,10 @@ struct ConfigTests {
       focus_follows_mouse_max_scroll_amount = 0.1
       focus_follows_mouse_delay_ms = 50
       mouse_follows_focus = true
+      drag_edge_scroll_enabled = false
+      drag_edge_scroll_zone = 24
+      drag_edge_scroll_delay_ms = 400
+      drag_edge_scroll_max_speed = 700
 
       [layout]
       gaps = 8
@@ -202,6 +209,10 @@ struct ConfigTests {
     #expect(config.input.focusFollowsMouseMaxScrollAmount == 0.1)
     #expect(config.input.focusFollowsMouseDelayMS == 50)
     #expect(config.input.mouseFollowsFocus)
+    #expect(!config.input.dragEdgeScrollEnabled)
+    #expect(config.input.dragEdgeScrollZone == 24)
+    #expect(config.input.dragEdgeScrollDelayMS == 400)
+    #expect(config.input.dragEdgeScrollMaxSpeed == 700)
     #expect(config.layout.gaps == 8)
     #expect([config.layout.outerTopGap, config.layout.outerRightGap, config.layout.outerBottomGap,
       config.layout.outerLeftGap] == [1, 2, 0, 3])
