@@ -124,7 +124,9 @@ extension Daemon {
   /// Command-Tab or the Dock brought this window's app forward. Defi's own focus work
   /// activates apps too: after it focused this app lately, or a newer command, the usual
   /// path decides.
-  func focusActivatedWindow(_ windowID: WindowID, activatedAt timestamp: TimeInterval) {
+  func focusActivatedWindow(
+    _ windowID: WindowID, activatedAt timestamp: TimeInterval, leftMouseButtonDown: Bool
+  ) {
     let input = platform.userInputTracker.snapshot
     let processID = state.windows[windowID]?.processID
     let skipped: String? =
@@ -132,22 +134,35 @@ extension Daemon {
       else if timestamp <= max(latestCommandInputTimestamp, input.latestCapturedCommandTimestamp) { "command" }
       else if processID == nil { "unknown-window" }
       else if let processID, platform.internalFocusIsRecent(processID: processID) { "internal-focus" }
-      else if CGEventSource.buttonState(.combinedSessionState, button: .left) { "button-down" }
+      else if leftMouseButtonDown { "button-down" }
       else { nil }
     if let skipped {
       return platform.recordPerformanceTrace("activation-skipped window=\(windowID.rawValue) reason=\(skipped)")
     }
-    selectNativeTarget(windowID, trace: "activation-focus", inputAt: timestamp)
+    selectNativeTarget(windowID, trace: "activation-focus", inputAt: timestamp,
+      preemptsMouseGesture: true)
   }
 
   /// Selects a window the user chose natively and moves the ribbon to it on the keyboard's
   /// path. Only a window on an active workspace: a workspace switch keeps the usual path.
-  private func selectNativeTarget(_ windowID: WindowID, trace: String, inputAt: TimeInterval?) {
+  private func selectNativeTarget(
+    _ windowID: WindowID, trace: String, inputAt: TimeInterval?, preemptsMouseGesture: Bool = false
+  ) {
     guard !shouldShutdown, !restorationInFlight, !overviewState.isOpen,
       !platform.nativeFocusIsAppPopup,
       let monitorID = focusWindowFromPointer(
         windowID, activeMonitorID: activeMonitorID, state: &state, viewports: viewportsByMonitor)
     else { return }
+    if preemptsMouseGesture {
+      // The Dock press may have pinned the old scroll position. A read that
+      // sampled that press can complete after activation has revealed this window.
+      if let anchor = mouseGestureScrollAnchor {
+        platform.recordPerformanceTrace(
+          "activation-retires-mouse-anchor window=\(windowID.rawValue) offset=\(anchor.scrollOffset)"
+        )
+      }
+      preemptMouseGesture()
+    }
     focus.interrupt()
     platform.invalidateFocusRecovery(recoveringTo: windowID)
     invalidateSubmittedCommandFocus(recoveringTo: windowID)

@@ -601,7 +601,9 @@ extension Daemon {
         cancelSubmittedPointerFocus(recoveringTo: focusedWindowID)
         rearmPointerFocusTransition()
       }
-      if keyboardFocusPreemptsMouseGesture(
+      let activationPreemptsMouseGesture = nativeFocusAccepted && !snapshot.leftMouseButtonDown
+        && (activationTimestamp.map { $0 > latestFocusIntentTimestamp } ?? false)
+      if activationPreemptsMouseGesture || keyboardFocusPreemptsMouseGesture(
         nativeFocusAccepted: nativeFocusAccepted,
         keyboardFocusIntentCurrent: keyboardFocusIntentCurrent,
         leftMouseButtonDown: snapshot.leftMouseButtonDown,
@@ -610,7 +612,7 @@ extension Daemon {
         preemptMouseGesture()
         mouseResizeGestureActive = false
         platform.recordPerformanceTrace(
-          "mouse-gesture-preempted-by-keyboard-focus window=\(focusedWindowID.rawValue)"
+          "mouse-gesture-preempted-by-native-focus window=\(focusedWindowID.rawValue)"
         )
       }
       if snapshot.leftMouseButtonDown && snapshot.nativeFocusChanged
