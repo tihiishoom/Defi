@@ -6,6 +6,7 @@ public func focusWindow(
   _ windowID: WindowID,
   state: inout RuntimeState
 ) -> Bool {
+  let ownerID = transientRootWindowID(windowID, windows: state.windows)
   for monitorIndex in state.monitors.indices {
     for workspaceIndex in state.monitors[monitorIndex].workspaces.indices {
       if let floatingIndex = state.monitors[monitorIndex]
@@ -16,6 +17,16 @@ public func focusWindow(
         let activatedWorkspace =
           state.monitors[monitorIndex].activeWorkspace
           != state.monitors[monitorIndex].workspaces[workspaceIndex].id
+        if ownerID != windowID,
+          let ownerColumn = state.monitors[monitorIndex].workspaces[workspaceIndex].columns
+            .firstIndex(where: { $0.windows.contains(ownerID) }),
+          let ownerTab = state.monitors[monitorIndex].workspaces[workspaceIndex].columns[ownerColumn]
+            .windows.firstIndex(of: ownerID)
+        {
+          state.monitors[monitorIndex].workspaces[workspaceIndex].focusedColumn = ownerColumn
+          state.monitors[monitorIndex].workspaces[workspaceIndex].columns[ownerColumn]
+            .focusedWindow = ownerTab
+        }
         state.monitors[monitorIndex].workspaces[workspaceIndex].focusedFloatingWindow =
           floatingIndex
         state.monitors[monitorIndex].workspaces[workspaceIndex].focusedLayer = .floating

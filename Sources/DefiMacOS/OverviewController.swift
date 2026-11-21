@@ -859,7 +859,7 @@ public final class OverviewController: NSObject {
   ) -> Bool {
     guard isOpen, !selectionCommitPending, let snapshot, let selection,
       let windowID = selection.windowID, let window = snapshot.windows[windowID],
-      !snapshot.nativeFullscreenWindowIDs.contains(windowID), window.transientOwnerID == nil,
+      !snapshot.nativeFullscreenWindowIDs.contains(windowID), !window.isTransient,
       !window.floating || command == .toggleFloating else { return false }
     hasDeferredSelection = true
     (handler ?? layoutCommandHandler)(command, windowID, window.appID, selection.location.monitorID,
@@ -1011,7 +1011,7 @@ public final class OverviewController: NSObject {
     guard !selectionCommitPending,
       case .window(let windowID, let monitorID, let workspaceID) = selection,
       let window = snapshot.windows[windowID],
-      window.transientOwnerID == nil,
+      !window.isTransient,
       !snapshot.nativeFullscreenWindowIDs.contains(windowID),
       let monitor = snapshot.monitors.first(where: { $0.id == monitorID }),
       let workspace = monitor.workspaces.first(where: { $0.id == workspaceID })

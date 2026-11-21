@@ -60,7 +60,7 @@ public func applyOverviewLayoutCommand(
 ) throws -> [WindowID: Rect] {
   guard command.editsSelectedLayout else { throw OverviewRuntimeError.invalidDropTarget }
   _ = try validateOverviewWindow(intent, state: state)
-  guard state.windows[intent.windowID]?.transientOwnerID == nil else {
+  guard state.windows[intent.windowID]?.isTransient != true else {
     throw OverviewRuntimeError.transientWindow(intent.windowID)
   }
   guard !state.nativeFullscreenWindowIDs.contains(intent.windowID) else {
@@ -132,7 +132,7 @@ public func applyOverviewDrop(
   state: inout RuntimeState
 ) throws -> OverviewDropResult {
   let sourceLocation = try validateOverviewWindow(intent, state: state)
-  guard state.windows[intent.windowID]?.transientOwnerID == nil else {
+  guard state.windows[intent.windowID]?.isTransient != true else {
     throw OverviewRuntimeError.transientWindow(intent.windowID)
   }
   let rootWindowID = transientRootWindowID(intent.windowID, windows: state.windows)
@@ -248,6 +248,10 @@ public func applyOverviewDrop(
     guard next.monitors[targetMonitorIndex].workspaces[targetWorkspaceIndex]
       .columns.indices.contains(columnIndex)
     else { throw OverviewRuntimeError.invalidDropTarget }
+    let column = next.monitors[targetMonitorIndex].workspaces[targetWorkspaceIndex].columns[columnIndex]
+    guard !column.isTabbed || !column.windows.contains(where: {
+      next.windows[$0]?.isTransient == true
+    }) else { throw OverviewRuntimeError.invalidDropTarget }
     var windowIndex = requestedWindowIndex
     if sameWorkspace, sourceColumnWasRemoved == false,
       sourceColumnIndex == requestedColumnIndex,

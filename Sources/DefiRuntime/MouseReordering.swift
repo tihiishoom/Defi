@@ -627,6 +627,15 @@ private func mouseDropLayout(
     sourceColumnIndex: sourceColumnIndex, frames: frames)
 }
 
+private func allowsMouseStack(
+  _ windowID: WindowID, into column: Column, state: RuntimeState
+) -> Bool {
+  !column.isTabbed || (
+    state.windows[windowID]?.isTransient != true
+      && !column.windows.contains { state.windows[$0]?.isTransient == true }
+  )
+}
+
 /// The stack place under the pointer, and whether the window's constraints allow it.
 private func mouseStackHover(
   _ windowID: WindowID, _ layout: MouseDropLayout, pointer: (x: Double, y: Double), state: RuntimeState
@@ -644,7 +653,8 @@ private func mouseStackHover(
     return (
       MouseStackTarget(
         monitorID: layout.monitorID, workspaceID: layout.workspace.id, columnIndex: columnIndex, row: row),
-      column.isTabbed || stackFit(stacked, windowsByID: state.windows, viewport: layout.viewport, settings: state.layout) == .fits
+      allowsMouseStack(windowID, into: column, state: state)
+        && (column.isTabbed || stackFit(stacked, windowsByID: state.windows, viewport: layout.viewport, settings: state.layout) == .fits)
     )
   }
   return nil
@@ -665,7 +675,8 @@ public func stackTiledWindow(
   else { return false }
   var workspace = state.monitors[monitorIndex].workspaces[workspaceIndex]
   guard let sourceColumnIndex = workspace.columns.firstIndex(where: { $0.windows.contains(windowID) }),
-    workspace.columns.indices.contains(target.columnIndex)
+    workspace.columns.indices.contains(target.columnIndex),
+    allowsMouseStack(windowID, into: workspace.columns[target.columnIndex], state: state)
   else { return false }
   var targetIndex = target.columnIndex
   if sourceColumnIndex == targetIndex {

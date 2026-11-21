@@ -30,7 +30,8 @@ extension Daemon {
       let controller = RecentWindowsController(inputMode: recentWindowsInputMode) { [weak self] entry in
         NavigationActor.enqueue { [weak self] in
           guard let self, desktopSessionActive, !overviewState.isOpen, let location = state.location(containing: entry.window.id),
-            state.windows[entry.window.id]?.appID == entry.window.appID else { return }
+            let current = state.windows[entry.window.id], !current.isTransient,
+            current.appID == entry.window.appID else { return }
           focusFromOverview(windowID: entry.window.id, appID: entry.window.appID,
             monitorID: location.monitorID, workspaceID: location.workspaceID,
             overviewGeneration: nil, offsets: [:], requiresOverviewSession: false)

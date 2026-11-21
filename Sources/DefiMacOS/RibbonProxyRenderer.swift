@@ -19,6 +19,7 @@ struct RibbonProxyWindow {
   let to: Rect
   /// Just opened: it grows in its slot while its app draws it there under the overlay.
   var appears = false
+  var showsBorder = true
 }
 
 /// Pictures stay valid only for the native size they were captured at.
@@ -516,7 +517,7 @@ final class RibbonProxyPresenter {
     let missingIDs = Set(missing.map(\.id))
     let unmanagedShown = unmanaged.filter { !missingIDs.contains($0.id) }
     shown += unmanagedShown.map {
-      RibbonProxyWindow(id: $0.id, appID: "", processID: $0.processID, from: $0.frame, to: $0.frame)
+      RibbonProxyWindow(id: $0.id, appID: "", processID: $0.processID, from: $0.frame, to: $0.frame, showsBorder: false)
     }
     stills = unmanaged.map {
       RibbonProxyRefresh(id: $0.id, appID: "", processID: $0.processID, frame: $0.frame, distance: 0)
@@ -1400,7 +1401,7 @@ final class RibbonProxyPresenter {
     setContents(sublayers["icon"], badged ? WindowCaptureStore.shared.icon(window.processID) : nil)
     sublayers["icon"]?.opacity = 1
     if let border = sublayers["border"] as? CAShapeLayer {
-      if let borderStyle, let appearance = overviewWindowBorderAppearance(isSelected: selected,
+      if window.showsBorder, let borderStyle, let appearance = overviewWindowBorderAppearance(isSelected: selected,
         style: borderStyle, scale: 1) {
         let color = appearance.color
         border.strokeColor = CGColor(srgbRed: CGFloat((color >> 16) & 255) / 255,

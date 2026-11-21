@@ -32,6 +32,8 @@ public struct MenuBarContent: View {
       }
       Menu("Windows", systemImage: "macwindow.on.rectangle") {
         Button("Recent Windows…") { commandHandler("toggle-recent-windows") }
+        Button("Join Left Column as Tabs") { commandHandler("join-window-as-tabs left") }
+        Button("Join Right Column as Tabs") { commandHandler("join-window-as-tabs right") }
         Button("Toggle Column Tabs") { commandHandler("toggle-column-tabbed-display") }
         Button("Cycle Window Height") { commandHandler("cycle-window-height next") }
         Button("Reset Stack Heights") { commandHandler("reset-window-height") }

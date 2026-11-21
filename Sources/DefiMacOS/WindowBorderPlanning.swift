@@ -5,6 +5,11 @@ import DefiConfig
 import DefiCore
 import DefiModel
 
+extension Window {
+  /// Temporary panels can report geometry while their native surface is hidden.
+  public var showsDefiBorder: Bool { !isTransient && floatingOrigin != .automatic }
+}
+
 struct WindowBorderStyle: Equatable, Sendable {
   let enabled: Bool
   let width: Double

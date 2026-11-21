@@ -22,6 +22,10 @@ public struct Window: Equatable, Codable, Sendable {
   public var stackHeightFraction: Double?
   public var tiledSizeAcceptance: TiledSizeAcceptance?
 
+  public var isTransient: Bool {
+    isModal || transientOwnerID != nil || role == "AXSheet" || subrole == "AXDialog"
+  }
+
   public init(
     id: WindowID,
     appID: String,

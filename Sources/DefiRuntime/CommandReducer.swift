@@ -195,7 +195,12 @@ public func reduce(
       let index = try workspaceIndex(state.monitors[monitorIndex])
       let column = state.monitors[monitorIndex].workspaces[index].focusedColumn
       if state.monitors[monitorIndex].workspaces[index].columns.indices.contains(column) {
-        let tabbed = state.monitors[monitorIndex].workspaces[index].columns[column].isTabbed
+        let workspace = state.monitors[monitorIndex].workspaces[index]
+        let selection = workspace.columns[column]
+        let tabbed = selection.isTabbed
+        guard workspace.focusedLayer == .tiled,
+          tabbed || !selection.windows.contains(where: { state.windows[$0]?.isTransient == true })
+        else { return }
         if tabbed, let viewport = viewports[state.monitors[monitorIndex].id],
           case .rejected(let rejection) = stackFit(
             state.monitors[monitorIndex].workspaces[index].columns[column].windows,
@@ -350,15 +355,20 @@ public func reduce(
       )
     case .focusMonitor, .focusWindowOrWorkspace:
       break
-    case .joinWindow(let direction):
+    case .joinWindow(let direction), .joinWindowAsTabs(let direction):
       let index = try workspaceIndex(state.monitors[monitorIndex])
       let workspace = state.monitors[monitorIndex].workspaces[index]
+      let asTabs = command == .joinWindowAsTabs(direction)
+      let target = joinTargetColumn(direction, workspace: workspace)
+      if asTabs || target?.isTabbed == true {
+        guard workspace.focusedLayer == .tiled,
+          let source = state.selectedWindowID(on: state.monitors[monitorIndex].id),
+          state.windows[source]?.isTransient != true,
+          target?.windows.contains(where: { state.windows[$0]?.isTransient == true }) != true
+        else { return }
+      }
       if !workspace.columns.isEmpty,
-        !joinTargetsNativeFullscreenColumn(
-          direction,
-          workspace: workspace,
-          nativeFullscreenWindowIDs: state.nativeFullscreenWindowIDs
-        )
+        target?.windows.contains(where: state.nativeFullscreenWindowIDs.contains) != true
       {
         let windowsByID = state.windows
         let viewport = viewports[state.monitors[monitorIndex].id]
@@ -366,6 +376,7 @@ public func reduce(
           direction,
           in: &state.monitors[monitorIndex].workspaces[index],
           settings: layout,
+          asTabs: asTabs,
           stackFit: { windowIDs in
             viewport.map {
               stackFit(windowIDs, windowsByID: windowsByID, viewport: $0, settings: layout)
@@ -407,11 +418,7 @@ public func reduce(
   normalizeNativeFullscreenColumns(state: &state)
 }
 
-private func joinTargetsNativeFullscreenColumn(
-  _ direction: Direction,
-  workspace: Workspace,
-  nativeFullscreenWindowIDs: Set<WindowID>
-) -> Bool {
+private func joinTargetColumn(_ direction: Direction, workspace: Workspace) -> Column? {
   let targetColumnIndex: Int?
   switch direction {
   case .left, .previous:
@@ -422,12 +429,10 @@ private func joinTargetsNativeFullscreenColumn(
       ? workspace.focusedColumn + 1
       : nil
   case .up, .down, .first, .last:
-    return false
+    return nil
   }
-  guard let targetColumnIndex else { return false }
-  return workspace.columns[targetColumnIndex].windows.contains {
-    nativeFullscreenWindowIDs.contains($0)
-  }
+  guard let targetColumnIndex else { return nil }
+  return workspace.columns[targetColumnIndex]
 }
 
 private func commandMutatesNativeFullscreenSelection(_ command: Command) -> Bool {
@@ -437,7 +442,7 @@ private func commandMutatesNativeFullscreenSelection(_ command: Command) -> Bool
     .setWindowHeight, .cycleWindowHeight, .resetWindowHeight,
     .moveColumnToWorkspace, .moveWindowToWorkspaceTarget,
     .reorderWorkspace, .moveWorkspaceToMonitor,
-    .maximizeColumn, .centerColumn, .toggleColumnTabbedDisplay, .toggleFloating, .joinWindow, .unjoinWindows:
+    .maximizeColumn, .centerColumn, .toggleColumnTabbedDisplay, .toggleFloating, .joinWindow, .joinWindowAsTabs, .unjoinWindows:
     true
   case .focusColumn, .focusFloating, .focusWindow, .focusWindowOrWorkspace, .switchWorkspace,
     .focusWorkspace, .focusMonitor,
@@ -479,10 +484,11 @@ func transientRootWindowID(
   return root
 }
 
-func transientDescendants(
+public func transientDescendants(
   of ownerWindowIDs: Set<WindowID>,
   windows: [WindowID: Window]
 ) -> Set<WindowID> {
+  guard !ownerWindowIDs.isEmpty else { return [] }
   var descendants = Set<WindowID>()
   var owners = ownerWindowIDs
   while true {
@@ -554,6 +560,7 @@ private func toggleFocusedFloating(
   guard let workspaceIndex else { throw ReducerError.noMonitor }
   var workspace = state.monitors[monitorIndex].workspaces[workspaceIndex]
   if let windowID = effectiveSelectedFloatingWindowID(in: workspace) {
+    guard state.windows[windowID]?.isTransient != true else { return }
     state.suspendedTiledPlacements[windowID] = nil
     removeWindow(windowID, from: &workspace, settings: state.layout)
     insertNewWindow(windowID, into: &workspace, settings: state.layout)

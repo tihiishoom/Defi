@@ -62,7 +62,7 @@ func transientOwnerResolutionCandidateIDs(
   relationshipChildIDs: Set<WindowID>
 ) -> Set<WindowID> {
   Set(windows.compactMap { window in
-    window.isModal
+    window.isTransient
       || window.floatingOrigin == .automatic
       || window.forceTiling
       || relationshipChildIDs.contains(window.id)

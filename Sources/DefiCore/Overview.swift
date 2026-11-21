@@ -430,7 +430,7 @@ public func projectOverview(
             frame: projectedFrame,
             layer: .tiled(columnIndex: columnIndex, windowIndex: windowIndex),
             isNativeFullscreen: isFullscreen,
-            canDrag: !isFullscreen && snapshot.windows[windowID]?.transientOwnerID == nil
+            canDrag: !isFullscreen && snapshot.windows[windowID]?.isTransient != true
           )
         )
       }
@@ -459,7 +459,7 @@ public func projectOverview(
           frame: projectedFrame,
           layer: .floating,
           isNativeFullscreen: isFullscreen,
-          canDrag: !isFullscreen && snapshot.windows[windowID]?.transientOwnerID == nil
+          canDrag: !isFullscreen && snapshot.windows[windowID]?.isTransient != true
         )
       )
     }
