@@ -320,8 +320,9 @@ final class Daemon {
         self?.cancelAnimationForMouseGesture()
       },
       activatedWindowHandler: { [weak self] windowID, activatedAt in
-        guard self?.desktopSessionActive == true else { return }
-        self?.focusActivatedWindow(windowID, activatedAt: activatedAt)
+        guard let self, desktopSessionActive else { return }
+        focusActivatedWindow(windowID, activatedAt: activatedAt,
+          leftMouseButtonDown: CGEventSource.buttonState(.combinedSessionState, button: .left))
       }
     )
 

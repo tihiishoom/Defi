@@ -108,4 +108,69 @@ struct DaemonDesktopSynchronizationTests {
     let releasedLock = try DaemonInstanceLock(url: lockURL)
     withExtendedLifetime(releasedLock) {}
   }
+  @Test
+  @NavigationActor
+  func dockActivationSurvivesSnapshotFromBeforeButtonRelease() async throws {
+    let directory = URL(filePath: "/tmp/defi-dock-focus-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let configURL = directory.appending(path: "config.toml")
+    try """
+      [layout]
+      default_column_width = 1
+      gaps = 0
+      [animation]
+      enabled = false
+      """.write(to: configURL, atomically: true, encoding: .utf8)
+    let menuBar = await MainActor.run { MenuBarState(accessibilityTrusted: { false }) }
+    let daemon = try Daemon(
+      options: DaemonOptions(arguments: ["--config", configURL.path, "--socket",
+        directory.appending(path: "daemon.sock").path]),
+      menuBar: menuBar,
+      instanceLockURL: directory.appending(path: "daemon.lock"),
+      topologyStore: WorkspaceTopologyStore(url: directory.appending(path: "topology.json")),
+      desktopSnapshotOverviewUpdater: { _ in }
+    )
+    defer { daemon.flushPendingTopologyWrite() }
+    let monitorID = MonitorID(rawValue: 1)
+    let monitor = MonitorSnapshot(id: monitorID, frame: Rect(x: 0, y: 0, width: 1000, height: 700))
+    daemon.latestMonitors = [monitor]
+    daemon.activeMonitorID = monitorID
+    daemon.state.attachMonitor(monitorID)
+    let first = WindowID(rawValue: 1), target = WindowID(rawValue: 2)
+    let processID: Int32 = 999_999
+    let windows = [first, target].map { id in
+      Window(id: id, appID: "fixture-\(id.rawValue)", title: "Fixture",
+        frame: monitor.frame, processID: processID, monitorID: monitorID)
+    }
+    for window in windows {
+      try discoverWindow(window, decision: RuleDecision(), state: &daemon.state)
+    }
+    focusWindow(first, state: &daemon.state)
+    daemon.beginMouseGesture()
+    daemon.mouseGestureScrollAnchor = workspaceScrollAnchor(containing: first, state: daemon.state)
+    #expect(daemon.mouseGestureScrollAnchor?.scrollOffset == 0)
+
+    daemon.platform.userInputTracker.recordApplicationActivation(processID: processID, at: 10)
+    daemon.focusActivatedWindow(target, activatedAt: 10, leftMouseButtonDown: false)
+    #expect(daemon.state.selectedWindowID(on: monitorID) == target)
+    #expect(daemon.state.monitors[0].workspaces[0].scrollOffset == 1)
+
+    // Reconcile an AX read which sampled the Dock press before activation.
+    // Block native frame writes so this remains independent of the desktop.
+    daemon.restorationInFlight = true
+    daemon.applyDesktopSnapshot(
+      DesktopSnapshot(monitors: [monitor], windows: windows,
+        focusedWindowID: first, leftMouseButtonDown: true),
+      nativeFocusWasPending: false,
+      forceFullWindowRefresh: false,
+      forceWindowListRefresh: false,
+      forceApplicationInventoryRefresh: false,
+      targetedWindowRetryRefresh: false,
+      consumePeriodicWindowRefresh: false
+    )
+    #expect(daemon.state.selectedWindowID(on: monitorID) == target)
+    #expect(daemon.state.monitors[0].workspaces[0].scrollOffset == 1)
+  }
+
 }
