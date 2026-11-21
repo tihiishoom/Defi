@@ -93,7 +93,7 @@ public final class MacOSPlatform {
       return false
     }
     let windows = windowProxyCarryWindows(monitor) + [RibbonProxyWindow(id: id, appID: carried.appID,
-      processID: processID, from: native, to: native)]
+      processID: processID, from: native, to: native, showsBorder: carried.showsDefiBorder)]
     guard presenter.host(id, windows: windows, viewport: monitor.viewport,
       generation: frameSubmissionGeneration)
     else {
@@ -191,11 +191,11 @@ public final class MacOSPlatform {
       // A window still on its way to or from its parking corner is not on the ribbon yet.
       if let frame = native[id], windowProxyVisibleOverlap(frame, viewport) > 1.01,
         logical.map({ abs($0.y - frame.y) < 40 }) ?? true {
-        return RibbonProxyWindow(id: id, appID: window.appID, processID: processID, from: frame, to: frame)
+        return RibbonProxyWindow(id: id, appID: window.appID, processID: processID, from: frame, to: frame, showsBorder: window.showsDefiBorder)
       }
       // Parked at a corner, its native y is the display's bottom: the ribbon place is logical.
       guard let logical else { return nil }
-      return RibbonProxyWindow(id: id, appID: window.appID, processID: processID, from: logical, to: logical)
+      return RibbonProxyWindow(id: id, appID: window.appID, processID: processID, from: logical, to: logical, showsBorder: window.showsDefiBorder)
     }
   }
   var previousLogicalRibbonFrames: [WindowID: Rect] = [:]

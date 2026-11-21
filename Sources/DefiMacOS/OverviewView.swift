@@ -416,7 +416,8 @@ final class OverviewView: NSView {
       layer.add(transition, forKey: "selection")
     }
     layer.setValue(selected, forKey: "selected")
-    guard let border = overviewWindowBorderAppearance(
+    guard snapshot?.windows[card.windowID]?.showsDefiBorder != false,
+      let border = overviewWindowBorderAppearance(
       isSelected: selected,
       style: borderStyle,
       scale: scale

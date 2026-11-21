@@ -235,7 +235,10 @@ extension Daemon {
     platform.recordPerformanceTrace(
       "frame-submit source=\(source) cg=\(commandPerformance?.generation.description ?? "none") layoutMs=\(String(format: "%.2f", layoutMS))"
     )
-    platform.stageWindowBorderSelection(selectedWindowID)
+    let borderSelection = selectedWindowID.flatMap { id in
+      state.windows[id]?.showsDefiBorder == true ? id : nil
+    }
+    platform.stageWindowBorderSelection(borderSelection)
     // Without animations (or with Reduce Motion), the overlay and its pictures are not needed.
     platform.windowProxiesEnabled = animationsEnabled
     platform.windowProxyDroppedWindowID =
@@ -300,9 +303,11 @@ extension Daemon {
       }
     }
     platform.updateWindowBorders(
-      frames: borderAssignments,
-      selectedWindowID: selectedWindowID,
-      liveWindowID: activelyResizedWindowID,
+      frames: borderAssignments.filter { state.windows[$0.windowID]?.showsDefiBorder == true },
+      selectedWindowID: borderSelection,
+      liveWindowID: activelyResizedWindowID.flatMap { id in
+        state.windows[id]?.showsDefiBorder == true ? id : nil
+      },
       config: config.decorations.borders
     )
     platform.updateNativeFullscreenPlaceholders(

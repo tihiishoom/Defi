@@ -155,7 +155,7 @@ extension Daemon {
     cancelSubmittedPointerFocus(recoveringTo: windowID)
     activeMonitorID = monitorID
     platform.recordPerformanceTrace("\(trace) window=\(windowID.rawValue) inputAgeMs=\(inputAt.map { String(format: "%.1f", (ProcessInfo.processInfo.systemUptime - $0) * 1_000) } ?? "none")")
-    platform.commitWindowBorderSelection(windowID)
+    platform.commitWindowBorderSelection(state.windows[windowID]?.showsDefiBorder == true ? windowID : nil)
     startScrollAnimationsIfNeeded()
     _ = dispatchScrollAnimationIfNeeded()
     needsDesktopSync = true
@@ -278,7 +278,7 @@ extension Daemon {
           case .selectionChanged(let monitorID):
             self.activeMonitorID = monitorID
             self.pointerFocusAppliedCount += 1
-            self.platform.commitWindowBorderSelection(windowID)
+            self.platform.commitWindowBorderSelection(self.state.windows[windowID]?.showsDefiBorder == true ? windowID : nil)
             self.startScrollAnimationsIfNeeded()
             _ = self.dispatchScrollAnimationIfNeeded()
             self.needsDesktopSync = true
