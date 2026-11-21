@@ -400,14 +400,21 @@ struct RibbonProxyTests {
   }
 
   @Test func theCardRingHugsTheWindowLikeTheNativeRing() throws {
-    let layer = CALayer(), ring = CALayer()
-    ring.name = "border"; ring.borderWidth = 4
+    let layer = CALayer(), ring = CAShapeLayer()
+    ring.name = "border"; ring.lineWidth = 4
     layer.addSublayer(ring)
     layer.setValue(16.0, forKey: "defiWindowRadius")
     let frames = ribbonProxySublayerFrames(layer, size: CGSize(width: 800, height: 600),
       borderStyle: WindowBorderStyle(config: BordersConfig(placement: "outside")))
     #expect(frames.first?.1 == CGRect(x: -4, y: -4, width: 808, height: 608))
-    #expect(ring.cornerRadius == 20)
+    #expect(ring.cornerRadius == 18)
+    let path = try #require(ring.path)
+    #expect(path.boundingBoxOfPath == CGRect(x: 2, y: 2, width: 804, height: 604))
+    let stroke = path.copy(strokingWithWidth: ring.lineWidth, lineCap: .butt,
+      lineJoin: .round, miterLimit: 10)
+    #expect(stroke.contains(CGPoint(x: 24, y: 606)))
+    #expect(!stroke.contains(CGPoint(x: 402, y: 606)))
+    #expect(!stroke.contains(CGPoint(x: 2, y: 302)))
   }
 
 }

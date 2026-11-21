@@ -77,7 +77,7 @@ final class OverviewView: NSView {
   private let canvas = CALayer()
   private var workspaceLayers: [WorkspaceID: OverviewWorkspaceLayers] = [:]
   private var cardLayers: [WindowID: OverviewCardLayers] = [:]
-  private var borderLayers: [WindowID: CALayer] = [:]
+  private var borderLayers: [WindowID: CAShapeLayer] = [:]
   private let overlayLayer = CALayer()
   private let dragLayer = CALayer()
   private let dragBorder = CALayer()
@@ -278,7 +278,7 @@ final class OverviewView: NSView {
       liveWindows.insert(card.windowID)
       let cardLayer = cardLayers[card.windowID] ?? OverviewCardLayers()
       cardLayers[card.windowID] = cardLayer
-      let border = borderLayers[card.windowID] ?? CALayer()
+      let border = borderLayers[card.windowID] ?? CAShapeLayer()
       borderLayers[card.windowID] = border
       let isFloating = card.layer == .floating
       let isOverlay = projection?.overlayWindowID == card.windowID
@@ -402,7 +402,7 @@ final class OverviewView: NSView {
   private func renderBorder(
     _ card: OverviewWindowProjection,
     scale: Double,
-    layer: CALayer,
+    layer: CAShapeLayer,
     origin: CGPoint
   ) {
     let selected = selection?.windowID == card.windowID && selection?.location.monitorID == monitorID
@@ -430,14 +430,14 @@ final class OverviewView: NSView {
       width: border.width,
       placement: borderStyle.placement
     )
-    // A layer border lies inside its bounds; widen it by half so it covers the
-    // same band as a stroke centred on the border path.
     let half = border.width / 2
     setFrame(layer, cgRect(geometry.frame).insetBy(dx: -half, dy: -half)
       .offsetBy(dx: -origin.x, dy: -origin.y))
-    layer.cornerRadius = geometry.radius + half
-    layer.borderWidth = border.width
-    layer.borderColor = overviewBorderColor(border.color)
+    layer.fillColor = nil
+    layer.lineWidth = border.width
+    layer.path = windowBorderCornerPath(in: layer.bounds.insetBy(dx: half, dy: half),
+      radius: geometry.radius, length: 24 * scale)
+    layer.strokeColor = overviewBorderColor(border.color)
     layer.isHidden = false
   }
 
