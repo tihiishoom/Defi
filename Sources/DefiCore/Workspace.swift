@@ -121,12 +121,13 @@ public func focusWindow(
 
   switch direction {
   case .up, .previous:
-    workspace.columns[index].focusedWindow = max(workspace.columns[index].focusedWindow - 1, 0)
+    workspace.columns[index].focusedWindow = workspace.columns[index].isTabbed
+      ? (workspace.columns[index].focusedWindow + workspace.columns[index].windows.count - 1) % workspace.columns[index].windows.count
+      : max(workspace.columns[index].focusedWindow - 1, 0)
   case .down, .next:
-    workspace.columns[index].focusedWindow = min(
-      workspace.columns[index].focusedWindow + 1,
-      workspace.columns[index].windows.count - 1
-    )
+    workspace.columns[index].focusedWindow = workspace.columns[index].isTabbed
+      ? (workspace.columns[index].focusedWindow + 1) % workspace.columns[index].windows.count
+      : min(workspace.columns[index].focusedWindow + 1, workspace.columns[index].windows.count - 1)
   case .first:
     workspace.columns[index].focusedWindow = 0
   case .last:
@@ -327,7 +328,8 @@ public func joinFocusedWindow(
     throw LayoutError.emptyWorkspace
   }
   // Reject before mutating so a refused join leaves membership, focus and scroll intact.
-  if case .rejected(let rejection) = stackFit(
+  if !workspace.columns[targetColumnIndex].isTabbed,
+    case .rejected(let rejection) = stackFit(
     workspace.columns[targetColumnIndex].windows
       + [workspace.columns[sourceColumnIndex].windows[sourceWindowIndex]]
   ) {

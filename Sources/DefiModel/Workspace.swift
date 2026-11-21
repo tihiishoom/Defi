@@ -1,10 +1,21 @@
 import Foundation
 
+public enum ColumnDisplay: String, Codable, Sendable {
+  case stacked
+  case tabbed
+}
+
 public struct Column: Equatable, Codable, Sendable {
   public var windows: [WindowID]
   public var focusedWindow: Int
   public var width: ColumnWidth
   public var preMaximizedWidth: ColumnWidth?
+  public var display: ColumnDisplay?
+  public var isTabbed: Bool { display == .tabbed }
+  public var inactiveTabWindowIDs: Set<WindowID> {
+    guard isTabbed, windows.indices.contains(focusedWindow) else { return [] }
+    return Set(windows.enumerated().compactMap { $0.offset == focusedWindow ? nil : $0.element })
+  }
 
   public init(
     window: WindowID,

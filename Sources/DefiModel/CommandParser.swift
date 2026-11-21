@@ -141,6 +141,8 @@ public func parseCommand(_ input: String) throws -> Command {
     return .activateFloating
   case "join-window":
     return .joinWindow(try parseDirection(argument("direction")))
+  case "toggle-column-tabbed-display":
+    return .toggleColumnTabbedDisplay
   case "unjoin-windows":
     return .unjoinWindows
   case "toggle-cheatsheet":

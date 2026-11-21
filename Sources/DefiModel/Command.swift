@@ -45,6 +45,7 @@ public enum Command: Equatable, Codable, Sendable {
   case toggleFloating
   case activateFloating
   case joinWindow(Direction)
+  case toggleColumnTabbedDisplay
   case unjoinWindows
   case toggleCheatsheet
   case toggleOverview
@@ -54,7 +55,7 @@ public enum Command: Equatable, Codable, Sendable {
   public var editsSelectedLayout: Bool {
     switch self {
     case .setWindowHeight, .cycleWindowHeight, .resetWindowHeight, .cycleWidth, .maximizeColumn, .moveColumn, .moveWindow,
-      .joinWindow, .unjoinWindows, .toggleFloating:
+      .toggleColumnTabbedDisplay, .joinWindow, .unjoinWindows, .toggleFloating:
       true
     default:
       false
@@ -67,7 +68,7 @@ public enum Command: Equatable, Codable, Sendable {
 
   public var resizesManagedLayout: Bool {
     switch self {
-    case .setWindowHeight, .cycleWindowHeight, .resetWindowHeight, .cycleWidth, .maximizeColumn, .joinWindow, .unjoinWindows,
+    case .setWindowHeight, .cycleWindowHeight, .resetWindowHeight, .cycleWidth, .maximizeColumn, .toggleColumnTabbedDisplay, .joinWindow, .unjoinWindows,
       .moveColumnToMonitor, .moveWindowToMonitor, .moveWorkspaceToMonitor:
       true
     default:

@@ -16,6 +16,7 @@ public struct ApplicationPlacement: Codable, Equatable, Sendable {
   public var floatingFrame: Rect?
   public var stackIndex: Int?
   public var stackHeightFraction: Double?
+  public var columnDisplay: ColumnDisplay?
 }
 
 extension RuntimeState {
@@ -35,6 +36,7 @@ extension RuntimeState {
             {
               savedLayout?[index].columnIndex = columnIndex
               savedLayout?[index].stackIndex = stackIndex
+              savedLayout?[index].columnDisplay = column.display
             }
           }
         }
@@ -390,6 +392,7 @@ func insertPlacedWindow(
     let index = min(max(0, stackIndex), workspace.columns[columnIndex].windows.count)
     workspace.columns[columnIndex].windows.insert(id, at: index)
     workspace.columns[columnIndex].width = width
+    workspace.columns[columnIndex].display = placement.columnDisplay
     if focusInsertedWindow {
       workspace.focusedColumn = columnIndex
       workspace.columns[columnIndex].focusedWindow = index
@@ -401,5 +404,8 @@ func insertPlacedWindow(
     insertNewWindow(
       id, width: width, into: &workspace, settings: settings,
       focusInsertedWindow: focusInsertedWindow, insertionIndex: insertionIndex)
+    if let column = workspace.columns.firstIndex(where: { $0.windows.contains(id) }) {
+      workspace.columns[column].display = placement?.columnDisplay
+    }
   }
 }

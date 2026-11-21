@@ -142,6 +142,7 @@ extension Daemon {
       let controller = overviewController ?? makeOverviewController()
       overviewController = controller
       if request.isOpen {
+        columnTabBars.update([]) { _, _ in }
         if controller.isOpen {
           controller.update(snapshot: snapshot, layout: layout,
             borders: config.decorations.borders, animation: config.animation,

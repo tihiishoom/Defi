@@ -1,6 +1,8 @@
 import DefiModel
 import Foundation
 
+public let columnTabBarHeight = 28.0
+
 public func computeLayout(
   workspace: Workspace,
   viewport: Rect,
@@ -22,6 +24,29 @@ public func computeLayout(
   let gaps = horizontalGaps(settings: settings)
 
   for (columnIndex, column) in workspace.columns.enumerated() {
+    if column.isTabbed {
+      // Each tab retains a full-size target. The desktop parks inactive tabs.
+      for id in column.windows {
+        var single = workspace
+        var tab = Column(window: id, width: .fraction(1))
+        tab.preMaximizedWidth = column.preMaximizedWidth
+        single.columns = [tab]
+        single.focusedColumn = 0
+        single.scrollOffset = 0
+        let tabViewport = Rect(x: x, y: viewport.y + columnTabBarHeight,
+          width: widths[columnIndex], height: max(1, viewport.height - columnTabBarHeight))
+        var tabSettings = settings
+        tabSettings.defaultColumnWidth = 1
+        tabSettings.outerLeftGap = max(settings.innerHorizontalGap, 0)
+        tabSettings.outerRightGap = max(settings.innerHorizontalGap, 0)
+        if let assignment = computeLayout(workspace: single, viewport: tabViewport,
+          windows: windows, settings: tabSettings).first {
+          frames.append(assignment)
+        }
+      }
+      x += widths[columnIndex]
+      continue
+    }
     let preferredWidth = preferredColumnLayoutWidth(
       column, viewport: viewport, windowsByID: windowsByID, gaps: gaps
     )
@@ -244,6 +269,7 @@ private func acceptedTiledSizes(
   windowsByID: [WindowID: Window],
   settings: LayoutSettings
 ) -> [WindowID: TiledSizeAcceptance] {
+  guard !column.isTabbed else { return [:] }
   let heights = stackSlotHeights(
     column.windows, windowsByID: windowsByID, viewport: viewport, settings: settings
   )

@@ -113,6 +113,8 @@ final class Daemon {
   @MainActor var overviewInputMode: @Sendable (Bool) -> Void = { _ in }
   var hotKeys: HotKeyManager?
   var overviewState = OverviewPresentationState()
+  var layoutTabBarsByMonitor: [MonitorID: [ColumnTabBar]] = [:]
+  @MainActor lazy var columnTabBars = ColumnTabBarManager()
   @MainActor var overviewController: OverviewController?
   @MainActor var recentWindowsController: RecentWindowsController?
   var cheatsheetState = CheatsheetState()
