@@ -289,6 +289,7 @@ public enum WorkspaceLabelStyle: String, Codable, CaseIterable, Sendable {
   case name
   case icon
   case iconAndName = "icon_and_name"
+  case strip
 }
 
 public struct MenuBarConfig: Codable, Equatable, Sendable {

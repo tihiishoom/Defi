@@ -7,6 +7,7 @@ import SwiftUI
 @main
 struct DefiDaemonMain: App {
   private let daemon: Daemon
+  private let workspaceStrip: WorkspaceMenuStrip
   @State private var menuBar: MenuBarState
 
   init() {
@@ -22,6 +23,10 @@ struct DefiDaemonMain: App {
       }
       menuBar.isInserted = menuBarEnabled
       self.daemon = daemon
+      menuBar.update(activeWorkspace: "", workspaces: [], workspaceStyle: config.menuBar.workspaceStyle)
+      workspaceStrip = WorkspaceMenuStrip(state: menuBar) { command in
+        NavigationActor.enqueue { daemon.handleMenuCommand(command) }
+      }
       _menuBar = State(initialValue: menuBar)
       DefiSettingsRuntimeStatus.shared.updateConfiguration(config)
       NavigationActor.enqueue { daemon.start() }
@@ -47,7 +52,10 @@ struct DefiDaemonMain: App {
   }
 
   var body: some Scene {
-    MenuBarExtra(isInserted: $menuBar.isInserted) {
+    MenuBarExtra(isInserted: Binding(
+      get: { menuBar.isInserted && menuBar.workspaceStyle != .strip },
+      set: { if menuBar.workspaceStyle != .strip { menuBar.isInserted = $0 } }
+    )) {
       MenuBarContent(
         state: menuBar,
         commandHandler: { command in NavigationActor.enqueue { daemon.handleMenuCommand(command) } }
