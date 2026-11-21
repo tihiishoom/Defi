@@ -405,6 +405,9 @@ private func applyWindowIDReplacements(
       replacement.frame.height = previous.frame.height
     }
     state.windows[replacementID] = replacement
+    var recentSeen = Set<WindowID>()
+    state.recentWindowIDs = state.recentWindowIDs.map { $0 == previousID ? replacementID : $0 }
+      .filter { recentSeen.insert($0).inserted }
 
     for monitorIndex in state.monitors.indices {
       for workspaceIndex in state.monitors[monitorIndex].workspaces.indices {
