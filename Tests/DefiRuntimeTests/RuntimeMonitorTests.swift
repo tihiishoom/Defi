@@ -668,6 +668,15 @@ struct MonitorMoveFocusTests {
       state: &state
     )
 
+    #expect(state.monitors[1].workspaces[0].floatingWindows == [transientID])
+
+    observedTransient.transientOwnerID = nil
+    _ = reconcileWindows(
+      [try #require(state.windows[ownerID]), observedTransient],
+      config: config,
+      state: &state
+    )
+
     #expect(
       state.monitors[1].workspaces[0].columns == [
         Column(

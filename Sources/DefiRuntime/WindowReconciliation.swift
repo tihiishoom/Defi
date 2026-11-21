@@ -30,7 +30,7 @@ public func discoverWindow(
     window.floatingOrigin = nil
   } else if decision.floating {
     window.floatingOrigin = .configured
-  } else if window.floating && window.isTransient {
+  } else if window.floating && window.isTransient && window.floatingOrigin == nil {
     window.floatingOrigin = .automatic
   }
   window.intrinsicSize = decision.intrinsicSize
@@ -261,7 +261,7 @@ public func reconcileWindows(
       if let existing = state.windows[window.id] {
         if updated.isTransient, !existing.forceTiling, !fullscreenWindowIDs.contains(window.id) {
           updated.floating = true
-          updated.floatingOrigin = existing.floatingOrigin == .configured ? .configured : .automatic
+          updated.floatingOrigin = existing.floatingOrigin ?? .automatic
           if !existing.floating {
             reclassifyTiledWindowAsAutomaticFloater(window.id, state: &state)
           }
