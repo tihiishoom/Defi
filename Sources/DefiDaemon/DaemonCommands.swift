@@ -387,6 +387,9 @@ extension Daemon {
         return .success()
       }
       handleCheatsheetInput(.dismiss)
+      if parsedCommand == .toggleRecentWindows {
+        return toggleRecentWindows()
+      }
       if parsedCommand == .toggleOverview {
         return toggleOverview()
       }

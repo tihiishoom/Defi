@@ -527,7 +527,7 @@ extension MacOSPlatform {
     mouseGestureStartedHandler: @escaping (WindowID?) -> Void = { _ in }
   ) -> PlatformEventMonitor {
     PlatformEventMonitor(
-      handler: handler, userInputTracker: userInputTracker,
+      handler: handler, userInputTracker: userInputTracker, fileDragTracker: fileDragTracker,
       desktopSessionHandler: desktopSessionHandler, windowEventHandler: windowEventHandler,
       liveFrameHandler: { [weak self] pressedWindowID, type, eventPointer in
         guard let self else { return }

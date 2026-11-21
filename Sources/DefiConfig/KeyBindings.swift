@@ -9,7 +9,7 @@ public let acceleratorKeyCodes: [String: UInt16] = [
   "rightbracket": 30, "o": 31, "u": 32, "leftbracket": 33,
   "i": 34, "p": 35, "l": 37, "j": 38, "quote": 39,
   "k": 40, "semicolon": 41, "backslash": 42, "comma": 43,
-  "slash": 44, "n": 45, "m": 46, "period": 47,
+  "slash": 44, "n": 45, "m": 46, "period": 47, "tab": 48,
   "left": 123, "right": 124, "down": 125, "up": 126,
 ]
 

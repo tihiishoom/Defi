@@ -6,6 +6,7 @@ public enum CommandParseError: Error, Equatable, Sendable {
   case missingArgument(String)
   case invalidDirection(String)
   case invalidPosition(String)
+  case invalidHeight(String)
 }
 
 public func parseCommand(_ input: String) throws -> Command {
@@ -115,6 +116,21 @@ public func parseCommand(_ input: String) throws -> Command {
     return .focusMonitor(try parseSpatialDirection(argument("direction")))
   case "cycle-width":
     return .cycleWidth(try parseDirection(argument("direction")))
+  case "set-window-height":
+    let value = try argument("height")
+    let number = value.hasSuffix("%") ? String(value.dropLast()) : value
+    guard let height = Double(number), height.isFinite, height > 0, height < 100 else {
+      throw CommandParseError.invalidHeight(value)
+    }
+    return .setWindowHeight(height / 100)
+  case "cycle-window-height":
+    let direction = try parseDirection(argument("direction"))
+    guard [.next, .previous].contains(direction) else {
+      throw CommandParseError.invalidDirection(parts[1])
+    }
+    return .cycleWindowHeight(direction)
+  case "reset-window-height":
+    return .resetWindowHeight
   case "maximize-column":
     return .maximizeColumn
   case "center-column":
@@ -125,10 +141,14 @@ public func parseCommand(_ input: String) throws -> Command {
     return .activateFloating
   case "join-window":
     return .joinWindow(try parseDirection(argument("direction")))
+  case "toggle-column-tabbed-display":
+    return .toggleColumnTabbedDisplay
   case "unjoin-windows":
     return .unjoinWindows
   case "toggle-cheatsheet":
     return .toggleCheatsheet
+  case "toggle-recent-windows":
+    return .toggleRecentWindows
   case "toggle-overview":
     return .toggleOverview
   case "run-startup-commands":

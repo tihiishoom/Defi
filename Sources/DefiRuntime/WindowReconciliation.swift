@@ -15,7 +15,9 @@ public func discoverWindow(
     throw ReducerError.noMonitor
   }
   if state.windows[original.id] != nil {
-    state.windows[original.id] = original
+    var updated = original
+    updated.stackHeightFraction = state.windows[original.id]?.stackHeightFraction
+    state.windows[original.id] = updated
     return
   }
 
@@ -32,6 +34,7 @@ public func discoverWindow(
   window.intrinsicSize = decision.intrinsicSize
   let transientLocation = transientPlacementLocation(for: window, state: state)
   let saved = isNativeFullscreen ? nil : state.savedPlacement(for: window)
+  window.stackHeightFraction = saved?.stackHeightFraction
   if let saved, !decision.forceTiling, !decision.floating {
     window.floating = saved.floatingFrame != nil
     window.floatingOrigin = window.floating ? .user : nil
@@ -263,6 +266,7 @@ public func reconcileWindows(
           updated.floating = existing.floating
           updated.floatingOrigin = existing.floatingOrigin
         }
+        updated.stackHeightFraction = existing.stackHeightFraction
         updated.forceTiling = existing.forceTiling
         updated.intrinsicSize = existing.intrinsicSize
         if fullscreenWindowIDs.contains(window.id) {
@@ -393,6 +397,7 @@ private func applyWindowIDReplacements(
     replacement.floatingOrigin = previous.floatingOrigin
     replacement.forceTiling = previous.forceTiling
     replacement.intrinsicSize = previous.intrinsicSize
+    replacement.stackHeightFraction = previous.stackHeightFraction
     replacement.minimumTiledWidth = previous.minimumTiledWidth
     replacement.maximumTiledWidth = previous.maximumTiledWidth
     if previous.intrinsicSize {
@@ -400,6 +405,9 @@ private func applyWindowIDReplacements(
       replacement.frame.height = previous.frame.height
     }
     state.windows[replacementID] = replacement
+    var recentSeen = Set<WindowID>()
+    state.recentWindowIDs = state.recentWindowIDs.map { $0 == previousID ? replacementID : $0 }
+      .filter { recentSeen.insert($0).inserted }
 
     for monitorIndex in state.monitors.indices {
       for workspaceIndex in state.monitors[monitorIndex].workspaces.indices {

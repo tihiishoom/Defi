@@ -58,9 +58,9 @@ public func oversizedStackWindowIDs(
 
 /// Slot heights, top to bottom, that sum to `viewport.height`.
 ///
-/// Water-filling: every slot gets the same level, clamped into its window's
-/// `[minimum + gaps, maximum + gaps]`; the clamped slots hand their surplus or
-/// shortfall to the rest. Without constraints this is exactly `height / count`.
+/// Weighted water-filling clamps preferred fractions into each window's
+/// `[minimum + gaps, maximum + gaps]`; clamped slots hand their surplus or
+/// shortfall to the rest. Without preferences or constraints this is `height / count`.
 /// When every slot is capped, the surplus is spread evenly (the window is
 /// centred in its slot). An infeasible stack falls back to slots proportional
 /// to the required heights.
@@ -80,20 +80,35 @@ public func stackSlotHeights(
     return weights.map { viewport.height * $0 / total }
   }
 
+  let preferred = windowIDs.map { id -> Double? in
+    guard let fraction = windowsByID[id]?.stackHeightFraction,
+      fraction.isFinite, fraction > 0, fraction < 1 else { return nil }
+    return fraction
+  }
+  let missing = preferred.filter { $0 == nil }.count
+  let specified = preferred.compactMap { $0 }.reduce(0, +)
+  // A new unconfigured sibling gets a useful share even when existing saved
+  // fractions already occupy the full column.
+  let automatic = missing > 0
+    ? (specified < 1 - 0.000001 ? (1 - specified) / Double(missing) : 1 / Double(count))
+    : 0
+  let scale = specified > 0 && missing > 0 ? (1 - automatic * Double(missing)) / specified : 1
+  let weights = preferred.map { $0.map { $0 * scale } ?? automatic }
   var heights = [Double?](repeating: nil, count: count)
   var remaining = viewport.height
   while true {
     let free = heights.indices.filter { heights[$0] == nil }
     guard !free.isEmpty else { break }
-    let level = remaining / Double(free.count)
-    let tooSmall = free.filter { bounds[$0].lower > level }
-    let tooLarge = free.filter { bounds[$0].upper < level }
+    let totalWeight = free.reduce(0) { $0 + weights[$1] }
+    func level(_ index: Int) -> Double { remaining * weights[index] / totalWeight }
+    let tooSmall = free.filter { bounds[$0].lower > level($0) }
+    let tooLarge = free.filter { bounds[$0].upper < level($0) }
     if tooSmall.isEmpty, tooLarge.isEmpty {
-      free.forEach { heights[$0] = level }
+      free.forEach { heights[$0] = level($0) }
       break
     }
-    let shortfall = tooSmall.reduce(0) { $0 + bounds[$1].lower - level }
-    let excess = tooLarge.reduce(0) { $0 + level - bounds[$1].upper }
+    let shortfall = tooSmall.reduce(0) { $0 + bounds[$1].lower - level($1) }
+    let excess = tooLarge.reduce(0) { $0 + level($1) - bounds[$1].upper }
     for index in shortfall > excess ? tooSmall : tooLarge {
       heights[index] = shortfall > excess ? bounds[index].lower : bounds[index].upper
       remaining -= heights[index] ?? 0
@@ -188,7 +203,7 @@ public func separateInfeasibleStacks(
   while columnIndex < workspace.columns.count {
     defer { columnIndex += 1 }
     var column = workspace.columns[columnIndex]
-    guard column.windows.count > 1,
+    guard !column.isTabbed, column.windows.count > 1,
       excludingWindowIDs.isDisjoint(with: column.windows),
       !fits(column.windows[...])
     else { continue }

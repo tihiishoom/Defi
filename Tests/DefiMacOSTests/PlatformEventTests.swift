@@ -17,6 +17,23 @@ private final class TestAXElement: @unchecked Sendable {
 }
 
 struct PlatformEventTests {
+  @Test func fileDragRequiresFreshPasteboardDuringHeldGesture() {
+    var drag = FileDragGesture()
+    drag.drag(changeCount: 2, hasFiles: true)
+    #expect(!drag.active)
+    drag.press(changeCount: 2)
+    drag.drag(changeCount: 2, hasFiles: true)
+    #expect(!drag.active, "A stale file drag must not turn text selection into scrolling")
+    drag.drag(changeCount: 3, hasFiles: false)
+    #expect(!drag.active)
+    drag.drag(changeCount: 4, hasFiles: true)
+    #expect(drag.active)
+    drag.release()
+    #expect(!drag.active)
+    drag.drag(changeCount: 5, hasFiles: true)
+    #expect(!drag.active)
+  }
+
   @Test @NavigationActor
   func fullscreenRetiresQueuedFrameAndCursorCompletionsEvenWithIdleWriter() {
     let platform = MacOSPlatform()

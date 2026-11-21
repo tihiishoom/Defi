@@ -324,8 +324,8 @@ func resolveHotKeys(
         added: added, follows: follows, userFirst: written && [0, 1, 3].contains(rank)))
     }
     let physical = acceleratorKeyCodes[name]
-    // Digits and arrows (codes from 123) never follow the layout.
-    if let physical, layout == nil || Int(name) != nil || physical >= 123 {
+    // Digits, Tab and arrows (codes from 123) never follow the layout.
+    if let physical, layout == nil || Int(name) != nil || physical == 48 || physical >= 123 {
       claim(0, modifiers, physical)
       continue
     }

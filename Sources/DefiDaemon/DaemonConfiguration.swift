@@ -345,7 +345,10 @@ extension Daemon {
         DefiSettingsRuntimeStatus.shared.updateKeyboardStatus(keyboardMessage)
       }
       let setOverviewMode = manager.overviewModeSetter
+      let setRecentWindowsInput = manager.recentWindowsInputSetter
       DispatchQueue.main.async { [self] in
+        recentWindowsController?.close()
+        recentWindowsInputMode = setRecentWindowsInput
         overviewInputMode = setOverviewMode
         setOverviewMode(overviewController?.isOpen == true)
       }

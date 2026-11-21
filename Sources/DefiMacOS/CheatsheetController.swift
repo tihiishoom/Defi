@@ -148,6 +148,7 @@ private let shortcutLabels: [(command: String, label: String)] = [
   ("focus-workspace-previous", "Previous workspace"),
   ("focus-workspace-name", "Workspace"), ("workspace", "Workspace"),
   ("focus-workspace-position", "Workspace"), ("toggle-overview", "Overview"),
+  ("toggle-recent-windows", "Recent windows"),
   ("focus-monitor", "Focus monitor"), ("move-workspace-to-monitor", "Move workspace to monitor"),
   ("cycle-width previous", "Narrower"), ("cycle-width next", "Wider"),
   ("maximize-column", "Maximize column"),

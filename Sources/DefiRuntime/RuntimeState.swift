@@ -14,6 +14,7 @@ public struct DisconnectedMonitor: Equatable, Codable, Sendable {
 
 public struct WorkspaceTopology: Equatable, Codable, Sendable {
   // Optional so snapshots written before stable display identities remain readable.
+  public var recentWindowIDs: [WindowID]?
   public var monitorStableIDs: [MonitorID: String]?
   public var applicationPlacementBindings: [WindowID: String]?
   public var workspaceMonitorIDs: [WorkspaceID: String]?
@@ -29,6 +30,7 @@ public struct WorkspaceTopology: Equatable, Codable, Sendable {
   public var suspendedTiledPlacements: [WindowID: SuspendedTiledPlacement]
 
   public init(state: RuntimeState) {
+    recentWindowIDs = state.recentWindowIDs
     monitorStableIDs = state.monitorStableIDs
     applicationPlacementBindings = state.placementBindings
     workspaceMonitorIDs = state.workspaceMonitorIDs
@@ -65,6 +67,7 @@ public struct RuntimeState: Equatable, Sendable {
   public var suspendedTiledPlacements: [WindowID: SuspendedTiledPlacement]
   public var reservedEdgesByMonitor: [MonitorID: ReservedEdges]
   public var applicationPlacements: [ApplicationPlacement] = []
+  public var recentWindowIDs: [WindowID] = []
   public var savedLayout: [ApplicationPlacement]?
   var placementBindings: [WindowID: String] = [:]
 
@@ -104,6 +107,7 @@ public struct RuntimeState: Equatable, Sendable {
     placementBindings = topology.applicationPlacementBindings ?? [:]
     monitors = topology.monitors
     windows = topology.windows
+    recentWindowIDs = (topology.recentWindowIDs ?? []).filter { topology.windows[$0] != nil }
     nextOrdinaryWorkspaceNumber = topology.nextOrdinaryWorkspaceNumber
     disconnectedMonitors = topology.disconnectedMonitors
     nativeFullscreenWindowIDs = topology.nativeFullscreenWindowIDs

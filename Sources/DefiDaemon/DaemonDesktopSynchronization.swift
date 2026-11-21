@@ -582,6 +582,7 @@ extension Daemon {
         nativeCursorWarpWindowID = focusedWindowID
       }
       if nativeFocusAccepted {
+        state.recordRecentWindow(focusedWindowID)
         if let activationTimestamp, let processID = snapshot.frontmostProcessID {
           platform.userInputTracker.consumeApplicationActivation(
             processID: processID, at: activationTimestamp
@@ -741,7 +742,8 @@ extension Daemon {
               previous: proxyPreviewTarget, state: state, viewports: viewportsByMonitor,
               monitorFrames: physicalMonitorFrames)
           } : nil
-          if target != proxyPreviewTarget {
+          if target != proxyPreviewTarget || dragEdgeScrollPreviewDirty {
+            dragEdgeScrollPreviewDirty = false
             if mouseDropSlotMoved(gestureWindowID, from: proxyPreviewTarget, to: target, state: state,
               viewports: viewportsByMonitor, monitorFrames: physicalMonitorFrames)
             {
@@ -901,10 +903,14 @@ extension Daemon {
     synchronizeScrollOffsets(state: &state, viewports: viewportsByMonitor)
     // An overlay drop settles natives out of sight: release the scroll anchor now so
     // the drop and the scroll to the focused window are one motion.
-    if animatesMouseDrop { mouseGestureScrollAnchor = nil }
+    if animatesMouseDrop {
+      mouseGestureScrollAnchor = nil
+      dragEdgeScrollAnchor = nil
+    }
     if let mouseGestureScrollAnchor {
       restoreWorkspaceScroll(mouseGestureScrollAnchor, state: &state)
     }
+    restoreDragEdgeScrollIfCurrent()
     let focusedWindowIDForAlignment =
       guardedRemovalFocus?.windowID ?? snapshot.focusedWindowID
     if tracesWindowCreation {

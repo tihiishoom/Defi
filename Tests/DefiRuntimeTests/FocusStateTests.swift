@@ -123,7 +123,8 @@ struct FocusStateTests {
       requests.append((request, focus.submitWorkspace(request)))
     }
     let newest = try #require(requests.last)
-    let expectedState = state
+    var expectedState = state
+    if newestCompletesFirst { expectedState.recordRecentWindow(newest.0.requestedWindowID) }
     if newestCompletesFirst {
       #expect(focus.completeWorkspace(
         newest.0, submission: newest.1, result: .completed,

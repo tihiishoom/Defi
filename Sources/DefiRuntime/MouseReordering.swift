@@ -644,7 +644,7 @@ private func mouseStackHover(
     return (
       MouseStackTarget(
         monitorID: layout.monitorID, workspaceID: layout.workspace.id, columnIndex: columnIndex, row: row),
-      stackFit(stacked, windowsByID: state.windows, viewport: layout.viewport, settings: state.layout) == .fits
+      column.isTabbed || stackFit(stacked, windowsByID: state.windows, viewport: layout.viewport, settings: state.layout) == .fits
     )
   }
   return nil

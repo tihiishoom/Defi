@@ -310,6 +310,9 @@ public struct FocusState: Equatable, Sendable {
     guard commandCompletionIsCurrent(request, submission: submission) else { return .stale }
     submittedCommandFocus = nil
     commandSubmission = nil
+    if result == .completed || result == .completedWithoutMutation {
+      state.recordRecentWindow(request.windowID)
+    }
     if result == .failed || result == .failedAfterMutation,
       let retryCount = nextCommandFocusRetryCount(
         currentRetryCount: request.retryCount,
@@ -363,6 +366,9 @@ public struct FocusState: Equatable, Sendable {
     guard workspaceCompletionIsCurrent(request, submission: submission) else { return .stale }
     submittedWorkspaceFocusGeneration = nil
     workspaceSubmission = nil
+    if result == .completed || result == .completedWithoutMutation {
+      state.recordRecentWindow(request.requestedWindowID)
+    }
     if result == .frameSuperseded { return .settled }
     if result == .failed || result == .failedAfterMutation,
       let retryCount = nextCommandFocusRetryCount(

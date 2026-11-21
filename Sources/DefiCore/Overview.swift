@@ -378,6 +378,8 @@ public func projectOverview(
       width: monitorFrame.width,
       height: monitorFrame.height
     )
+    // Overview exposes every tab as a stack card so parked tabs remain selectable.
+    for index in workspace.columns.indices { workspace.columns[index].display = .stacked }
     let tiledFrames = Dictionary(
       uniqueKeysWithValues: computeLayout(
         workspace: workspace,

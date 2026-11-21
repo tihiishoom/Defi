@@ -124,6 +124,7 @@ final class OverviewToggleState: @unchecked Sendable {
 @NavigationActor
 extension Daemon {
   func toggleOverview() -> CommandResponse {
+    closeRecentWindows()
     guard !state.monitors.isEmpty else {
       return .failure("overview unavailable before monitor discovery")
     }
@@ -142,6 +143,7 @@ extension Daemon {
       let controller = overviewController ?? makeOverviewController()
       overviewController = controller
       if request.isOpen {
+        columnTabBars.update([]) { _, _ in }
         if controller.isOpen {
           controller.update(snapshot: snapshot, layout: layout,
             borders: config.decorations.borders, animation: config.animation,
@@ -352,15 +354,16 @@ extension Daemon {
     })
   }
 
-  private func focusFromOverview(
+  func focusFromOverview(
     windowID: WindowID,
     appID: String,
     monitorID: MonitorID,
     workspaceID: WorkspaceID,
     overviewGeneration: UInt64?,
-    offsets: [MonitorID: [WorkspaceID: Double]]
+    offsets: [MonitorID: [WorkspaceID: Double]],
+    requiresOverviewSession: Bool = true
   ) {
-    guard overviewToggleState.isCurrentSession(overviewGeneration) else { return }
+    guard !requiresOverviewSession || overviewToggleState.isCurrentSession(overviewGeneration) else { return }
     overviewEditedMonitorIDs.formUnion(applyOverviewScrollOffsets(offsets, state: &state))
     let previousSelectedWindowID = activeMonitorID.flatMap {
       state.selectedWindowID(on: $0)

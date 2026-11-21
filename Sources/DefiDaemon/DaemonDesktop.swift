@@ -47,6 +47,7 @@ extension Daemon {
   ) {
     guard !restorationInFlight, !shouldShutdown else { return }
     let layoutStartedAt = ProcessInfo.processInfo.systemUptime
+    var tabBars: [ColumnTabBar] = []
     var assignments: [FrameAssignment] = []
     var ribbonFrames: [FrameAssignment] = []
     var borderAssignments: [FrameAssignment] = []
@@ -66,6 +67,7 @@ extension Daemon {
       if let monitorIDs, !monitorIDs.contains(monitor.id),
         let cached = layoutPlansByMonitor[monitor.id]
       {
+        tabBars.append(contentsOf: layoutTabBarsByMonitor[monitor.id] ?? [])
         assignments.append(contentsOf: cached.assignments)
         borderAssignments.append(contentsOf: cached.borderAssignments)
         nativeFullscreenPlaceholderAssignments.append(
@@ -110,7 +112,28 @@ extension Daemon {
           settings: state.layout,
           excludingWindowIDs: state.nativeFullscreenWindowIDs
         )
-        let sizedFrames = layout.map(preserveIntrinsicSize)
+        let inactiveTabs = Set(workspace.columns.flatMap { $0.inactiveTabWindowIDs })
+        let tabFrames = layout.filter { inactiveTabs.contains($0.windowID) }
+        let sizedFrames = layout.filter { !inactiveTabs.contains($0.windowID) }.map(preserveIntrinsicSize)
+        monitorAssignments.append(contentsOf: tabFrames.map {
+          FrameAssignment(windowID: $0.windowID, frame: park($0))
+        })
+        monitorHiddenWindowIDs.formUnion(inactiveTabs)
+        if workspace.id == monitor.activeWorkspace && !overviewParksWindows {
+          for column in workspace.columns where column.isTabbed {
+            guard column.windows.indices.contains(column.focusedWindow),
+              let frame = sizedFrames.first(where: { $0.windowID == column.windows[column.focusedWindow] })?.frame,
+              frame.x < viewport.x + viewport.width && frame.x + frame.width > viewport.x else { continue }
+            tabBars.append(ColumnTabBar(monitorID: monitor.id, workspaceID: workspace.id,
+              selectedWindowID: column.windows[column.focusedWindow],
+              frame: Rect(x: max(frame.x, viewport.x), y: frame.y - columnTabBarHeight,
+                width: min(frame.x + frame.width, viewport.x + viewport.width) - max(frame.x, viewport.x),
+                height: columnTabBarHeight),
+              tabs: column.windows.compactMap { id in state.windows[id].map {
+                ColumnTab(windowID: id, appID: $0.appID, title: $0.title)
+              } }))
+          }
+        }
         if workspace.id == monitor.activeWorkspace && !overviewParksWindows {
           ribbonFrames.append(contentsOf: sizedFrames)
           let strip = continuousStripFramesForActiveWorkspace(
@@ -162,6 +185,7 @@ extension Daemon {
           monitorBorderAssignments.append(contentsOf: parked)
         }
       }
+      layoutTabBarsByMonitor[monitor.id] = tabBars.filter { $0.monitorID == monitor.id }
       let plan = MonitorLayoutPlan(
         assignments: monitorAssignments,
         borderAssignments: monitorBorderAssignments,
@@ -254,6 +278,17 @@ extension Daemon {
       source: source
     )
     if timerFrequencyHz == 0 { scheduleIdleTick() }
+    let bars = overviewState.isOpen ? [] : tabBars
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      self.columnTabBars.update(bars) { [weak self] bar, tab in
+        Task { @NavigationActor [weak self] in
+          self?.focusFromOverview(windowID: tab.windowID, appID: tab.appID,
+            monitorID: bar.monitorID, workspaceID: bar.workspaceID,
+            overviewGeneration: nil, offsets: [:], requiresOverviewSession: false)
+        }
+      }
+    }
     platform.updateWindowBorders(
       frames: borderAssignments,
       selectedWindowID: selectedWindowID,

@@ -27,6 +27,7 @@ final class PlatformEventMonitor {
   /// Left-button events, with the window the button went down on.
   private let liveFrameHandler:
     (_ pressedWindowID: WindowID?, _ type: NSEvent.EventType, _ pointer: CGPoint?) -> Void
+  private let fileDragTracker: FileDragTracker
   private var pressedWindowID: WindowID?
   private let borderStackingHandler: () -> Void
   /// A left press: with the window a plain click pressed, nil under a modifier.
@@ -60,6 +61,7 @@ final class PlatformEventMonitor {
   init(
     handler: @escaping (PlatformEventKind, pid_t?) -> Void,
     userInputTracker: UserInputTracker = UserInputTracker(),
+    fileDragTracker: FileDragTracker = FileDragTracker(),
     desktopSessionHandler: @escaping (DesktopSessionActivityChange) -> Void = { _ in },
     desktopSessionStateProvider: @escaping () -> DesktopSessionState =
       currentDesktopSessionState,
@@ -73,6 +75,7 @@ final class PlatformEventMonitor {
   ) {
     self.handler = handler
     self.userInputTracker = userInputTracker
+    self.fileDragTracker = fileDragTracker
     self.desktopSessionHandler = desktopSessionHandler
     self.desktopSessionStateProvider = desktopSessionStateProvider
     self.windowEventHandler =
@@ -275,6 +278,7 @@ final class PlatformEventMonitor {
 
   func handleMouseEvent(_ event: NSEvent) {
     guard desktopSessionActive else { return }
+    fileDragTracker.observe(event.type)
     if eventStartsMouseFocusInteraction(event.type) {
       // Only a left click interrupts the motion: lifting the overlay reveals late windows.
       if event.type == .leftMouseDown { NavigationActor.enqueue { RibbonProxyPresenter.cancelAllFading() } }
@@ -323,7 +327,8 @@ final class PlatformEventMonitor {
   }
 
   func resetMouseGestureState() -> Bool {
-    mouseGestureNormalizer.reset()
+    fileDragTracker.reset()
+    return mouseGestureNormalizer.reset()
   }
 
   func refresh(

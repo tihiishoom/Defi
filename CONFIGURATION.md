@@ -163,7 +163,7 @@ while it is active.
 
 ## `[input]`
 
-Controls focus transfer between managed windows and pointer.
+Controls focus transfer and drag scrolling between managed windows and pointer.
 
 ```toml
 [input]
@@ -179,6 +179,10 @@ mouse_follows_focus = false
 | `focus_follows_mouse_max_scroll_amount` | `0` | number from `0` to `1` | Maximum scroll as fraction of monitor width. `0` accepts only targets needing no scroll; `0.1` permits up to 10%. |
 | `focus_follows_mouse_delay_ms` | `50` | integer from `0` to `1000` | Milliseconds the pointer must rest before focus follows it. `0` focuses immediately; the delay applies only when `focus_follows_mouse` is enabled. |
 | `mouse_follows_focus` | `false` | boolean | Warps pointer to focused window center after keyboard focus changes, unless pointer is already inside it. |
+| `drag_edge_scroll_enabled` | `true` | boolean | Scrolls the ribbon while holding a moved tiled window or a file drag at a horizontal display edge. Does not activate on text selection or window resizing. |
+| `drag_edge_scroll_zone` | `32` | points from `1` to `128` | Width of each edge activation zone. |
+| `drag_edge_scroll_delay_ms` | `250` | integer from `0` to `2000` | Continuous dwell before scrolling starts; resets when leaving the edge or entering another display. |
+| `drag_edge_scroll_max_speed` | `900` | points/second from `1` to `3000` | Maximum speed at the edge, decreasing toward the inner edge of the zone. |
 
 Bare `focus_follows_mouse = true` does not scroll.
 Raise `focus_follows_mouse_max_scroll_amount` to allow bounded scrolling. Both

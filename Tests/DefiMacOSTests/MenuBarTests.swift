@@ -23,7 +23,7 @@ struct MenuBarTests {
     let menu = NSHostingMenu(rootView: MenuBarContent(state: state, commandHandler: { commands.append($0) }))
     menu.update()
     #expect(menu.items.filter { !$0.isSeparatorItem }.map(\.title) == [
-      "Workspaces", "Save Layout", "Restore Saved Layout", "Close Windows Outside Saved Layout…",
+      "Workspaces", "Windows", "Save Layout", "Restore Saved Layout", "Close Windows Outside Saved Layout…",
       "Settings…", "Quit Defi",
     ])
     #expect(menu.items.first { $0.title == "Restore Saved Layout" }?.isEnabled == false)

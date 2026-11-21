@@ -15,6 +15,8 @@ public struct ApplicationPlacement: Codable, Equatable, Sendable {
   public var width: ColumnWidth?
   public var floatingFrame: Rect?
   public var stackIndex: Int?
+  public var stackHeightFraction: Double?
+  public var columnDisplay: ColumnDisplay?
 }
 
 extension RuntimeState {
@@ -34,6 +36,7 @@ extension RuntimeState {
             {
               savedLayout?[index].columnIndex = columnIndex
               savedLayout?[index].stackIndex = stackIndex
+              savedLayout?[index].columnDisplay = column.display
             }
           }
         }
@@ -126,6 +129,7 @@ extension RuntimeState {
           into: &monitors[target.monitorIndex].workspaces[target.workspaceIndex],
           settings: layout, focusInsertedWindow: false, insertionIndex: index)
       }
+      window.stackHeightFraction = placement.stackHeightFraction
       window.monitorID = monitors[target.monitorIndex].id
       if window.floatingOrigin == .user && !window.floating { window.floatingOrigin = nil }
       windows[id] = window
@@ -291,7 +295,8 @@ extension RuntimeState {
         applicationPlacements[$0].workspaceID == workspace.id
           ? applicationPlacements[$0].columnIndex : nil
       } ?? columnIndex,
-      width: width, floatingFrame: width == nil ? window.frame : nil
+      width: width, floatingFrame: width == nil ? window.frame : nil,
+      stackHeightFraction: window.stackHeightFraction
     )
     if let index {
       applicationPlacements[index] = placement
@@ -387,6 +392,7 @@ func insertPlacedWindow(
     let index = min(max(0, stackIndex), workspace.columns[columnIndex].windows.count)
     workspace.columns[columnIndex].windows.insert(id, at: index)
     workspace.columns[columnIndex].width = width
+    workspace.columns[columnIndex].display = placement.columnDisplay
     if focusInsertedWindow {
       workspace.focusedColumn = columnIndex
       workspace.columns[columnIndex].focusedWindow = index
@@ -398,5 +404,8 @@ func insertPlacedWindow(
     insertNewWindow(
       id, width: width, into: &workspace, settings: settings,
       focusInsertedWindow: focusInsertedWindow, insertionIndex: insertionIndex)
+    if let column = workspace.columns.firstIndex(where: { $0.windows.contains(id) }) {
+      workspace.columns[column].display = placement?.columnDisplay
+    }
   }
 }

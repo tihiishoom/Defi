@@ -159,6 +159,51 @@ public func reduce(
         state.monitors[monitorIndex].workspaces[index].focusedLayer = .tiled
         try focusWindow(direction, in: &state.monitors[monitorIndex].workspaces[index])
       }
+    case .setWindowHeight, .cycleWindowHeight, .resetWindowHeight:
+      let index = try workspaceIndex(state.monitors[monitorIndex])
+      let workspace = state.monitors[monitorIndex].workspaces[index]
+      guard workspace.focusedLayer == .tiled,
+        workspace.columns.indices.contains(workspace.focusedColumn) else { return }
+      let column = workspace.columns[workspace.focusedColumn]
+      guard column.windows.indices.contains(column.focusedWindow) else { return }
+      let id = column.windows[column.focusedWindow]
+      if command == .resetWindowHeight {
+        for windowID in column.windows { state.windows[windowID]?.stackHeightFraction = nil }
+      } else if column.windows.count > 1 {
+        let fraction: Double
+        switch command {
+        case .setWindowHeight(let value):
+          guard value.isFinite, value > 0, value < 1 else { return }
+          fraction = value
+        case .cycleWindowHeight(let direction):
+          let presets = [0.25, 0.33, 0.5, 0.66, 0.75]
+          let current = state.windows[id]?.stackHeightFraction ?? 1 / Double(column.windows.count)
+          fraction = direction == .previous
+            ? (presets.last { $0 < current - 0.001 } ?? presets.last!)
+            : (presets.first { $0 > current + 0.001 } ?? presets.first!)
+        default: return
+        }
+        let peers = column.windows.filter { $0 != id }
+        let weights = peers.map { state.windows[$0]?.stackHeightFraction ?? 1 / Double(column.windows.count) }
+        let total = weights.reduce(0, +)
+        state.windows[id]?.stackHeightFraction = fraction
+        for (peer, weight) in zip(peers, weights) {
+          state.windows[peer]?.stackHeightFraction = (1 - fraction) * weight / total
+        }
+      }
+    case .toggleColumnTabbedDisplay:
+      let index = try workspaceIndex(state.monitors[monitorIndex])
+      let column = state.monitors[monitorIndex].workspaces[index].focusedColumn
+      if state.monitors[monitorIndex].workspaces[index].columns.indices.contains(column) {
+        let tabbed = state.monitors[monitorIndex].workspaces[index].columns[column].isTabbed
+        if tabbed, let viewport = viewports[state.monitors[monitorIndex].id],
+          case .rejected(let rejection) = stackFit(
+            state.monitors[monitorIndex].workspaces[index].columns[column].windows,
+            windowsByID: state.windows, viewport: viewport, settings: layout) {
+          throw ReducerError.stackConstraint(rejection)
+        }
+        state.monitors[monitorIndex].workspaces[index].columns[column].display = tabbed ? .stacked : .tabbed
+      }
     case .cycleWidth(let direction):
       let index = try workspaceIndex(state.monitors[monitorIndex])
       let columnIndex = state.monitors[monitorIndex].workspaces[index].focusedColumn
@@ -348,7 +393,7 @@ public func reduce(
       if !state.monitors[monitorIndex].workspaces[index].floatingWindows.isEmpty {
         state.monitors[monitorIndex].workspaces[index].focusedLayer = .floating
       }
-    case .toggleOverview, .toggleCheatsheet:
+    case .toggleOverview, .toggleRecentWindows, .toggleCheatsheet:
       break
     case .runStartupCommands:
       break
@@ -389,13 +434,14 @@ private func commandMutatesNativeFullscreenSelection(_ command: Command) -> Bool
   switch command {
   case .moveColumn, .moveWindow, .moveColumnToMonitor, .moveWindowToMonitor,
     .moveWindowToWorkspace, .sendWindowToWorkspace, .cycleWidth,
+    .setWindowHeight, .cycleWindowHeight, .resetWindowHeight,
     .moveColumnToWorkspace, .moveWindowToWorkspaceTarget,
     .reorderWorkspace, .moveWorkspaceToMonitor,
-    .maximizeColumn, .centerColumn, .toggleFloating, .joinWindow, .unjoinWindows:
+    .maximizeColumn, .centerColumn, .toggleColumnTabbedDisplay, .toggleFloating, .joinWindow, .unjoinWindows:
     true
   case .focusColumn, .focusFloating, .focusWindow, .focusWindowOrWorkspace, .switchWorkspace,
     .focusWorkspace, .focusMonitor,
-    .activateFloating, .toggleOverview, .toggleCheatsheet, .runStartupCommands:
+    .activateFloating, .toggleOverview, .toggleRecentWindows, .toggleCheatsheet, .runStartupCommands:
     false
   }
 }

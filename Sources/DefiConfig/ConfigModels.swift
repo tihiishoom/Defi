@@ -7,17 +7,29 @@ public struct InputConfig: Codable, Equatable, Sendable {
   public var focusFollowsMouseMaxScrollAmount: Double?
   public var focusFollowsMouseDelayMS: Int
   public var mouseFollowsFocus: Bool
+  public var dragEdgeScrollEnabled: Bool
+  public var dragEdgeScrollZone: Double
+  public var dragEdgeScrollDelayMS: Int
+  public var dragEdgeScrollMaxSpeed: Double
 
   public init(
     focusFollowsMouse: Bool = false,
     focusFollowsMouseMaxScrollAmount: Double? = 0,
     focusFollowsMouseDelayMS: Int = 50,
-    mouseFollowsFocus: Bool = false
+    mouseFollowsFocus: Bool = false,
+    dragEdgeScrollEnabled: Bool = true,
+    dragEdgeScrollZone: Double = 32,
+    dragEdgeScrollDelayMS: Int = 250,
+    dragEdgeScrollMaxSpeed: Double = 900
   ) {
     self.focusFollowsMouse = focusFollowsMouse
     self.focusFollowsMouseMaxScrollAmount = focusFollowsMouseMaxScrollAmount
     self.focusFollowsMouseDelayMS = focusFollowsMouseDelayMS
     self.mouseFollowsFocus = mouseFollowsFocus
+    self.dragEdgeScrollEnabled = dragEdgeScrollEnabled
+    self.dragEdgeScrollZone = dragEdgeScrollZone
+    self.dragEdgeScrollDelayMS = dragEdgeScrollDelayMS
+    self.dragEdgeScrollMaxSpeed = dragEdgeScrollMaxSpeed
   }
 
   enum CodingKeys: String, CodingKey {
@@ -26,6 +38,10 @@ public struct InputConfig: Codable, Equatable, Sendable {
       "focus_follows_mouse_max_scroll_amount"
     case focusFollowsMouseDelayMS = "focus_follows_mouse_delay_ms"
     case mouseFollowsFocus = "mouse_follows_focus"
+    case dragEdgeScrollEnabled = "drag_edge_scroll_enabled"
+    case dragEdgeScrollZone = "drag_edge_scroll_zone"
+    case dragEdgeScrollDelayMS = "drag_edge_scroll_delay_ms"
+    case dragEdgeScrollMaxSpeed = "drag_edge_scroll_max_speed"
   }
 
   public init(from decoder: Decoder) throws {
@@ -43,6 +59,10 @@ public struct InputConfig: Codable, Equatable, Sendable {
       ?? defaults.focusFollowsMouseDelayMS
     mouseFollowsFocus =
       try values.decodeIfPresent(Bool.self, forKey: .mouseFollowsFocus) ?? defaults.mouseFollowsFocus
+    dragEdgeScrollEnabled = try values.decodeIfPresent(Bool.self, forKey: .dragEdgeScrollEnabled) ?? defaults.dragEdgeScrollEnabled
+    dragEdgeScrollZone = try values.decodeIfPresent(Double.self, forKey: .dragEdgeScrollZone) ?? defaults.dragEdgeScrollZone
+    dragEdgeScrollDelayMS = try values.decodeIfPresent(Int.self, forKey: .dragEdgeScrollDelayMS) ?? defaults.dragEdgeScrollDelayMS
+    dragEdgeScrollMaxSpeed = try values.decodeIfPresent(Double.self, forKey: .dragEdgeScrollMaxSpeed) ?? defaults.dragEdgeScrollMaxSpeed
   }
 }
 

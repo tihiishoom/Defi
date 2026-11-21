@@ -113,7 +113,12 @@ final class Daemon {
   @MainActor var overviewInputMode: @Sendable (Bool) -> Void = { _ in }
   var hotKeys: HotKeyManager?
   var overviewState = OverviewPresentationState()
+  var layoutTabBarsByMonitor: [MonitorID: [ColumnTabBar]] = [:]
+  @MainActor lazy var columnTabBars = ColumnTabBarManager()
   @MainActor var overviewController: OverviewController?
+  @MainActor var recentWindowsController: RecentWindowsController?
+  @MainActor var recentWindowsInputMode: @Sendable (HotKeyManager.RecentWindowsKeyHandler?) -> Void = { _ in }
+  nonisolated let recentWindowsGeneration = Mutex<UInt64>(0)
   var cheatsheetState = CheatsheetState()
   @MainActor var cheatsheetController: CheatsheetController?
   var cheatsheetHoldTask: Task<Void, Never>?
@@ -173,6 +178,12 @@ final class Daemon {
   var mouseGestureChangedWindowFrame = false
   /// The drop the overlay is previewing during a drag; applied for real on release.
   var proxyPreviewTarget: MouseDropTarget?
+  var dragEdgeScroll = DragEdgeScrollState()
+  var dragEdgeScrollAnchor: WorkspaceScrollAnchor?
+  var dragEdgeScrollSelection: WindowID?
+  var dragEdgeScrollCommandGeneration: UInt64 = 0
+  var dragEdgeScrollInputTimestamp: TimeInterval = 0
+  var dragEdgeScrollPreviewDirty = false
   var mouseGestureInitialFrame: Rect?
   var mouseGestureScrollAnchor: WorkspaceScrollAnchor?
   var mouseGestureDisplayedOriginFrames: [WindowID: Rect] = [:]
@@ -330,7 +341,10 @@ final class Daemon {
     if active { invalidateDisplayArrangement() }
     displayPointerRouter.setActive(active)
     desktopSessionActive = active
-    if !active { handleCheatsheetInput(.dismiss) }
+    if !active {
+      handleCheatsheetInput(.dismiss)
+      closeRecentWindows()
+    }
     desktopSessionGeneration &+= 1
     guard active else {
       cancelPendingCommandFrameRead()
@@ -398,6 +412,7 @@ final class Daemon {
       platform.requestFrameRefresh(for: mouseGestureSettlement.windowID)
       needsDesktopSync = true
     }
+    updateDragEdgeScroll(now: now)
     let liveBorderGesture = platform.isLeftMouseButtonDown
     // The overlay stretches the ribbon until release, which learns the width. A snapshot
     // meanwhile waited on the WindowServer, busy with the live resize, while holding the
