@@ -64,6 +64,7 @@ struct CheatsheetHotKeyTests {
       ShortcutGroup(title: "Windows in a column", rows: [
         row("K", "Window up", "Move window up"), row("J", "Window down", "Move window down"),
         row(";", "Join left column"), row("'", "Join right column"), row("R", "Unjoin"),
+        row("TAB", "Recent windows"),
       ]),
       ShortcutGroup(title: "Workspaces", rows: [
         row("↑", "Workspace up", "Move column to workspace up"),
