@@ -3,6 +3,34 @@ import DefiCore
 import DefiModel
 import QuartzCore
 
+func windowBorderCornerPath(in rect: CGRect, radius: CGFloat, length: CGFloat = 24) -> CGPath {
+  let path = CGMutablePath()
+  guard rect.width > 0, rect.height > 0 else { return path }
+  let horizontal = min(length, rect.width / 2)
+  let vertical = min(length, rect.height / 2)
+  let radius = max(0, min(radius, horizontal, vertical))
+  let corners: [(CGPoint, CGPoint, CGPoint)] = [
+    (CGPoint(x: rect.minX + horizontal, y: rect.maxY),
+      CGPoint(x: rect.minX, y: rect.maxY), CGPoint(x: rect.minX, y: rect.maxY - vertical)),
+    (CGPoint(x: rect.maxX - horizontal, y: rect.maxY),
+      CGPoint(x: rect.maxX, y: rect.maxY), CGPoint(x: rect.maxX, y: rect.maxY - vertical)),
+    (CGPoint(x: rect.minX + horizontal, y: rect.minY),
+      CGPoint(x: rect.minX, y: rect.minY), CGPoint(x: rect.minX, y: rect.minY + vertical)),
+    (CGPoint(x: rect.maxX - horizontal, y: rect.minY),
+      CGPoint(x: rect.maxX, y: rect.minY), CGPoint(x: rect.maxX, y: rect.minY + vertical)),
+  ]
+  for (start, corner, end) in corners {
+    path.move(to: start)
+    if radius > 0 {
+      path.addArc(tangent1End: corner, tangent2End: end, radius: radius)
+    } else {
+      path.addLine(to: corner)
+    }
+    path.addLine(to: end)
+  }
+  return path
+}
+
 enum WindowBorderSegmentKind: CaseIterable, Sendable {
   case top
   case bottom

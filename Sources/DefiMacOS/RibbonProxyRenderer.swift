@@ -1367,8 +1367,9 @@ final class RibbonProxyPresenter {
     icon.name = "icon"; icon.contentsGravity = .resizeAspect
     icon.shadowColor = CGColor(gray: 0, alpha: 1); icon.shadowOpacity = 0.4
     icon.shadowRadius = 10; icon.shadowOffset = CGSize(width: 0, height: -3)
-    let border = CALayer()
+    let border = CAShapeLayer()
     border.name = "border"
+    border.fillColor = nil
     for sublayer in [shadow, content, icon, border] { layer.addSublayer(sublayer) }
     return layer
   }
@@ -1398,14 +1399,14 @@ final class RibbonProxyPresenter {
     } ?? CGColor(gray: 0.16, alpha: 1)
     setContents(sublayers["icon"], badged ? WindowCaptureStore.shared.icon(window.processID) : nil)
     sublayers["icon"]?.opacity = 1
-    if let border = sublayers["border"] {
+    if let border = sublayers["border"] as? CAShapeLayer {
       if let borderStyle, let appearance = overviewWindowBorderAppearance(isSelected: selected,
         style: borderStyle, scale: 1) {
         let color = appearance.color
-        border.borderColor = CGColor(srgbRed: CGFloat((color >> 16) & 255) / 255,
+        border.strokeColor = CGColor(srgbRed: CGFloat((color >> 16) & 255) / 255,
           green: CGFloat((color >> 8) & 255) / 255, blue: CGFloat(color & 255) / 255,
           alpha: CGFloat(windowBorderAlpha(of: color)) / 255)
-        border.borderWidth = appearance.width
+        border.lineWidth = appearance.width
         border.isHidden = false
       } else {
         border.isHidden = true
@@ -1613,6 +1614,16 @@ func ribbonProxySpringVelocity(from: CGPoint, to: CGPoint, elapsed: TimeInterval
 }
 
 func ribbonProxyMove(_ layer: CALayer, from: CGRect, to: CGRect, velocity: CGPoint = .zero) {
+  if let border = layer as? CAShapeLayer, border.name == "border" {
+    if from.size != to.size, let target = border.path {
+      let origin = border.presentation()?.path ?? windowBorderCornerPath(
+        in: CGRect(origin: .zero, size: from.size).insetBy(dx: border.lineWidth / 2, dy: border.lineWidth / 2),
+        radius: border.cornerRadius)
+      ribbonProxySpring(border, "path", origin, target)
+    } else {
+      border.removeAnimation(forKey: "path")
+    }
+  }
   layer.frame = to
   // A still layer gets no spring: a sublayer animated in place under its moving window made
   // the compositor redraw the whole tree each frame, about three dropped frames per motion.
@@ -1721,11 +1732,17 @@ func ribbonProxySublayerFrames(_ layer: CALayer, size: CGSize,
     case "icon":
       return (sublayer, CGRect(x: size.width / 2 - 32, y: size.height / 2 - 32, width: 64, height: 64))
     case "border":
-      guard let borderStyle else { return nil }
+      guard let borderStyle, let border = sublayer as? CAShapeLayer else { return nil }
       // The native ring exactly: outside, it starts at the window edge and keeps its curve.
       let radius = layer.value(forKey: ribbonProxyRadiusKey) as? Double ?? 12
-      let outset = borderStyle.placement == .outside ? sublayer.borderWidth : 0
-      sublayer.cornerRadius = radius + outset
+      let outset = borderStyle.placement == .outside ? border.lineWidth : 0
+      let bounds = CGRect(x: 0, y: 0, width: size.width + 2 * outset, height: size.height + 2 * outset)
+      let pathRect = bounds.insetBy(dx: border.lineWidth / 2, dy: border.lineWidth / 2)
+      let pathRadius = max(radius + outset - border.lineWidth / 2, 0)
+      if border.path?.boundingBoxOfPath != pathRect || border.cornerRadius != pathRadius {
+        border.path = windowBorderCornerPath(in: pathRect, radius: pathRadius)
+        border.cornerRadius = pathRadius
+      }
       return (sublayer, CGRect(x: -outset, y: -outset, width: size.width + 2 * outset,
         height: size.height + 2 * outset))
     default: return nil

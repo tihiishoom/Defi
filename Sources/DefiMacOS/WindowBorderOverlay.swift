@@ -424,12 +424,7 @@ private final class BorderSegment {
         height: max(windowFrame.height - width, 0)
       )
       let strokeRadius = max(radius - strokeInset, 0)
-      shapeLayer.path = CGPath(
-        roundedRect: pathRect,
-        cornerWidth: strokeRadius,
-        cornerHeight: strokeRadius,
-        transform: nil
-      )
+      shapeLayer.path = windowBorderCornerPath(in: pathRect, radius: strokeRadius)
       shapeLayer.lineWidth = width
       CATransaction.commit()
     }
