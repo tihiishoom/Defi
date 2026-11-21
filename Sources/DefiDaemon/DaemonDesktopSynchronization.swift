@@ -582,6 +582,7 @@ extension Daemon {
         nativeCursorWarpWindowID = focusedWindowID
       }
       if nativeFocusAccepted {
+        state.recordRecentWindow(focusedWindowID)
         if let activationTimestamp, let processID = snapshot.frontmostProcessID {
           platform.userInputTracker.consumeApplicationActivation(
             processID: processID, at: activationTimestamp

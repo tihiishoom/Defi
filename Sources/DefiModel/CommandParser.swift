@@ -129,6 +129,8 @@ public func parseCommand(_ input: String) throws -> Command {
     return .unjoinWindows
   case "toggle-cheatsheet":
     return .toggleCheatsheet
+  case "toggle-recent-windows":
+    return .toggleRecentWindows
   case "toggle-overview":
     return .toggleOverview
   case "run-startup-commands":

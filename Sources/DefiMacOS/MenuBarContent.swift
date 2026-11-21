@@ -30,6 +30,12 @@ public struct MenuBarContent: View {
           openDefiAccessibilitySettings()
         }
       }
+      Menu("Windows", systemImage: "macwindow.on.rectangle") {
+        Button("Recent Windows…") { commandHandler("toggle-recent-windows") }
+        Button("Toggle Column Tabs") { commandHandler("toggle-column-tabbed-display") }
+        Button("Cycle Window Height") { commandHandler("cycle-window-height next") }
+        Button("Reset Stack Heights") { commandHandler("reset-window-height") }
+      }
       Button("Save Layout", systemImage: "square.and.arrow.down") {
         commandHandler("save-layout")
       }

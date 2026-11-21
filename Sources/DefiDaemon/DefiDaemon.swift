@@ -114,6 +114,7 @@ final class Daemon {
   var hotKeys: HotKeyManager?
   var overviewState = OverviewPresentationState()
   @MainActor var overviewController: OverviewController?
+  @MainActor var recentWindowsController: RecentWindowsController?
   var cheatsheetState = CheatsheetState()
   @MainActor var cheatsheetController: CheatsheetController?
   var cheatsheetHoldTask: Task<Void, Never>?

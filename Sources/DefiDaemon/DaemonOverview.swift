@@ -352,15 +352,16 @@ extension Daemon {
     })
   }
 
-  private func focusFromOverview(
+  func focusFromOverview(
     windowID: WindowID,
     appID: String,
     monitorID: MonitorID,
     workspaceID: WorkspaceID,
     overviewGeneration: UInt64?,
-    offsets: [MonitorID: [WorkspaceID: Double]]
+    offsets: [MonitorID: [WorkspaceID: Double]],
+    requiresOverviewSession: Bool = true
   ) {
-    guard overviewToggleState.isCurrentSession(overviewGeneration) else { return }
+    guard !requiresOverviewSession || overviewToggleState.isCurrentSession(overviewGeneration) else { return }
     overviewEditedMonitorIDs.formUnion(applyOverviewScrollOffsets(offsets, state: &state))
     let previousSelectedWindowID = activeMonitorID.flatMap {
       state.selectedWindowID(on: $0)

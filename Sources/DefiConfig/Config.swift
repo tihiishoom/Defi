@@ -323,6 +323,7 @@ public struct Config: Equatable, Sendable {
       "\(modifier)-quote": "join-window right",
       "\(modifier)-r": "unjoin-windows",
       "\(modifier)-o": "toggle-overview",
+      "\(modifier)-tab": "toggle-recent-windows",
     ]
     // Configured navigation takes precedence over colliding fixed monitor keys.
     let monitorKeys = [
