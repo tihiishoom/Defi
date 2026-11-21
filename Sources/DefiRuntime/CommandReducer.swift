@@ -350,10 +350,11 @@ public func reduce(
       )
     case .focusMonitor, .focusWindowOrWorkspace:
       break
-    case .joinWindow(let direction):
+    case .joinWindow(let direction), .joinWindowAsTabs(let direction):
       let index = try workspaceIndex(state.monitors[monitorIndex])
       let workspace = state.monitors[monitorIndex].workspaces[index]
-      if !workspace.columns.isEmpty,
+      let asTabs = command == .joinWindowAsTabs(direction)
+      if !workspace.columns.isEmpty, (!asTabs || workspace.focusedLayer == .tiled),
         !joinTargetsNativeFullscreenColumn(
           direction,
           workspace: workspace,
@@ -366,6 +367,7 @@ public func reduce(
           direction,
           in: &state.monitors[monitorIndex].workspaces[index],
           settings: layout,
+          asTabs: asTabs,
           stackFit: { windowIDs in
             viewport.map {
               stackFit(windowIDs, windowsByID: windowsByID, viewport: $0, settings: layout)
@@ -437,7 +439,7 @@ private func commandMutatesNativeFullscreenSelection(_ command: Command) -> Bool
     .setWindowHeight, .cycleWindowHeight, .resetWindowHeight,
     .moveColumnToWorkspace, .moveWindowToWorkspaceTarget,
     .reorderWorkspace, .moveWorkspaceToMonitor,
-    .maximizeColumn, .centerColumn, .toggleColumnTabbedDisplay, .toggleFloating, .joinWindow, .unjoinWindows:
+    .maximizeColumn, .centerColumn, .toggleColumnTabbedDisplay, .toggleFloating, .joinWindow, .joinWindowAsTabs, .unjoinWindows:
     true
   case .focusColumn, .focusFloating, .focusWindow, .focusWindowOrWorkspace, .switchWorkspace,
     .focusWorkspace, .focusMonitor,

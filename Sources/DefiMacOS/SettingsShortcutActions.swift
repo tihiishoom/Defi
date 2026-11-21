@@ -13,7 +13,7 @@ enum SettingsShortcutActions {
     "reorder-workspace",
     "move-workspace-to-monitor", "focus-monitor", "cycle-width", "set-window-height",
     "cycle-window-height", "reset-window-height", "maximize-column",
-    "center-column", "toggle-floating", "activate-floating", "join-window", "toggle-column-tabbed-display", "unjoin-windows",
+    "center-column", "toggle-floating", "activate-floating", "join-window", "join-window-as-tabs", "toggle-column-tabbed-display", "unjoin-windows",
     "toggle-cheatsheet", "toggle-overview", "toggle-recent-windows", "run-startup-commands",
   ]
   static let noArgumentActions: Set<String> = [
@@ -73,6 +73,7 @@ enum SettingsShortcutActions {
     "cycle-window-height": ["previous", "next"],
     "set-window-height": ["25%", "33%", "50%", "66%", "75%"],
     "join-window": ["left", "right"],
+    "join-window-as-tabs": ["left", "right"],
   ]
 
 }

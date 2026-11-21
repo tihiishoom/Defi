@@ -302,6 +302,7 @@ public func joinFocusedWindow(
   _ direction: Direction,
   in workspace: inout Workspace,
   settings: LayoutSettings,
+  asTabs: Bool = false,
   stackFit: ([WindowID]) -> StackFit = { _ in .fits }
 ) throws {
   let sourceColumnIndex = workspace.focusedColumn
@@ -328,13 +329,14 @@ public func joinFocusedWindow(
     throw LayoutError.emptyWorkspace
   }
   // Reject before mutating so a refused join leaves membership, focus and scroll intact.
-  if !workspace.columns[targetColumnIndex].isTabbed,
+  if !asTabs, !workspace.columns[targetColumnIndex].isTabbed,
     case .rejected(let rejection) = stackFit(
     workspace.columns[targetColumnIndex].windows
       + [workspace.columns[sourceColumnIndex].windows[sourceWindowIndex]]
   ) {
     throw rejection
   }
+  if asTabs { workspace.columns[targetColumnIndex].display = .tabbed }
   let windowID = workspace.columns[sourceColumnIndex].windows.remove(at: sourceWindowIndex)
 
   if workspace.columns[sourceColumnIndex].windows.isEmpty {
@@ -348,6 +350,9 @@ public func joinFocusedWindow(
       workspace.columns[adjustedTarget].windows.count - 1
     workspace.focusedColumn = adjustedTarget
   } else {
+    workspace.columns[sourceColumnIndex].focusedWindow = min(
+      sourceWindowIndex, workspace.columns[sourceColumnIndex].windows.count - 1
+    )
     workspace.columns[targetColumnIndex].windows.append(windowID)
     workspace.columns[targetColumnIndex].focusedWindow =
       workspace.columns[targetColumnIndex].windows.count - 1
