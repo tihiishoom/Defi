@@ -353,8 +353,6 @@ final class RibbonProxyPresenter {
   static func picturesArrived() { for presenter in presenters.values { presenter.picturesArrived() } }
   static func cancelAllFading() { for presenter in presenters.values { presenter.cancelFading() } }
   static func cancelAll(_ reason: String = "external") { for presenter in presenters.values { presenter.cancel(reason) } }
-  static func releaseHolds() { for presenter in presenters.values { presenter.releaseHold() } }
-  static func extendHolds(to seconds: CFTimeInterval = 1.2) { for presenter in presenters.values { presenter.extendHold(to: seconds) } }
   static func endDrag() { for presenter in presenters.values { presenter.endDrag() } }
   /// A display gone: its motion stops and its windows' borders come back.
   static func retain(_ displays: Set<CGDirectDisplayID>) {
@@ -433,11 +431,6 @@ final class RibbonProxyPresenter {
   /// Windows Defi managed while on screen: one gone from the layout closed, it is never a still.
   private var knownManaged: Set<WindowID> = []
   private var springStopped = true
-  /// A launching app's first window: the screen holds still until its layout opens it.
-  private var holdUntil: CFTimeInterval = 0
-  /// When the screen began holding for a new window.
-  private var holdStart: CFTimeInterval = 0
-  private var holdRelease: Task<Void, Never>?
   private var bordersHidden = false
   private var borderRestore: Task<Void, Never>?
   private var expectedTargets: [WindowID: Rect] = [:]
@@ -452,7 +445,7 @@ final class RibbonProxyPresenter {
   func begin(windows: [RibbonProxyWindow], viewport nextViewport: Rect, generation submission: UInt64,
     nativeTargets: [WindowID: Rect], requestedTargets requested: [WindowID: Rect] = [:],
     duration: TimeInterval, selectedWindowID: WindowID?,
-    keepsOffscreen: Bool = false, holds: Bool = false,
+    keepsOffscreen: Bool = false,
     managedWindowIDs: Set<WindowID> = [], borderWindowIDs: Set<WindowID>? = nil) -> Bool {
     let began = CACurrentMediaTime()
     // Any layout landing mid-drag leaves the carried proxy to the pointer.
@@ -491,7 +484,7 @@ final class RibbonProxyPresenter {
       $0.id != draggedWindowID
         && (keepsOffscreen || $0.from.ribbonIntersects(area) || $0.to.ribbonIntersects(area))
     }
-    guard !shown.isEmpty || holds else { return fallback("no-visible-window") }
+    guard !shown.isEmpty else { return fallback("no-visible-window") }
     // Visible ordinary windows Defi does not manage stay still on the overlay,
     // drawn from their own picture so the handoff is invisible.
     let phaseScreen = CACurrentMediaTime()
@@ -646,11 +639,7 @@ final class RibbonProxyPresenter {
     ribbonProxyCommit(#line)
     let flushMS = Int((CACurrentMediaTime() - committing) * 1_000)
     presenting = true
-    holdUntil = holds ? CACurrentMediaTime() + 0.5 : 0
-    holdRelease?.cancel(); holdRelease = nil
-    holdStart = CACurrentMediaTime()
-    // A hold is still: the snapshot that opens the window and fresh pictures must not wait for it.
-    RibbonProxyStore.shared.setMoving(!holds, display)
+    RibbonProxyStore.shared.setMoving(true, display)
     // This display's borders only: another display's stay as they are.
     let borders = borderWindowIDs.map { $0.union(shownIDs) } ?? managed
     if !bordersHidden || hiddenBorderIDs != borders {
@@ -709,7 +698,7 @@ final class RibbonProxyPresenter {
     }.map(\.id)).union(unsettledLeaving.subtracting(expected.keys).subtracting([draggedWindowID].compactMap { $0 }))
     unsettledLeaving = leaving
     let drawn = Set(shown.map(\.id) + [draggedWindowID].compactMap { $0 })
-    let stop = holds ? 0 : ribbonProxyVisualStop(travel: travel)
+    let stop = ribbonProxyVisualStop(travel: travel)
     // The windows below redraw at their new place first; a long motion or a drag then
     // goes opaque, which spares the compositor drawing them under every frame.
     // Opaque from the start occluded every window below at each step: apps stopped
@@ -823,59 +812,6 @@ final class RibbonProxyPresenter {
     DispatchQueue.main.async { RibbonProxyRenderer.shared.letWindowsDraw(draws, on: display) }
   }
 
-  /// Freezes the screen as it is when an app creates a window: macOS's own placement
-  /// never shows, and the window then opens in its slot, as in Niri.
-  func hold(windows: [RibbonProxyWindow], viewport: Rect, generation submission: UInt64,
-    processID: Int32, selectedWindowID: WindowID?, managedWindowIDs: Set<WindowID>,
-    borderWindowIDs: Set<WindowID>) {
-    // The still windows must look unchanged: a missing picture flashes an icon, a
-    // stand-in a blurred card under it. An old picture still holds: after a pause the
-    // screen rarely changed, and it is recaptured at once and dissolves into the new one,
-    // where refusing showed macOS's own placement instead.
-    let now = CACurrentMediaTime()
-    let unsharp = windows.filter { window in
-      WindowCaptureStore.shared.picture(window.id).map {
-        ribbonProxyPictureShowsWindow(captured: $0.size, reduced: $0.isReduced, native: window.to)
-      } != true
-    }
-    guard !presenting, drag == .idle, unsharp.isEmpty else {
-      // The overlay already covers the screen: it must not lift before the layout opens
-      // the window, or macOS's own placement shows.
-      if presenting, drag == .idle {
-        holdStart = now; holdUntil = max(holdUntil, now + 0.5)
-      }
-      return ribbonProxyLogger.notice("open-hold-refused pid=\(processID) presenting=\(self.presenting) unsharp=\(unsharp.map { "\($0.id.rawValue):\(Int($0.to.width))x\(Int($0.to.height))" }, privacy: .public)")
-    }
-    guard begin(windows: windows, viewport: viewport, generation: submission, nativeTargets: [:],
-      duration: ribbonProxySpringDuration, selectedWindowID: selectedWindowID, holds: true,
-      managedWindowIDs: managedWindowIDs, borderWindowIDs: borderWindowIDs) else { return }
-    let aged = windows.filter { window in
-      WindowCaptureStore.shared.picture(window.id).map { now - $0.capturedAt > ribbonProxyPictureFreshness } == true
-    }
-    aged.forEach(ribbonProxyCaptureNow)
-    ribbonProxyLogger.notice("open-hold pid=\(processID) recaptured=\(aged.count)")
-  }
-
-  /// The held window is not one the ribbon opens (a dialog, a native tab): the screen
-  /// moves again now. A layout that already took over the hold is left alone.
-  func releaseHold() {
-    guard presenting, holdUntil > 0 else { return }
-    holdUntil = 0
-    guard let pending = holdRelease else { return }
-    pending.cancel(); holdRelease = nil
-    land(generation, timedOut: false)
-  }
-
-  /// The held window opens a column, but its app is slow to expose it (Finder): the screen
-  /// stays held until the layout opens it in its slot, rather than showing macOS's placement.
-  /// At most 1.2 s after the hold began, so a window never opened cannot freeze the screen.
-  func extendHold(to seconds: CFTimeInterval) {
-    let until = holdStart + min(seconds, 1.2)
-    guard presenting, holdUntil > 0, holdUntil < until else { return }
-    holdUntil = until
-    ribbonProxyLogger.notice("open-hold-extended s=\(seconds)")
-  }
-
   /// Lifts the overlay everywhere but over `frames` (native, slow apps' outgoing windows).
   func cover(_ frames: [Rect], generation token: UInt64) {
     guard generation == token, presenting, let layers else { return }
@@ -890,17 +826,6 @@ final class RibbonProxyPresenter {
 
   private func land(_ token: UInt64, timedOut: Bool) {
     guard generation == token, presenting else { return }
-    let held = holdUntil - CACurrentMediaTime()
-    if held > 0 {
-      // No layout opened the window (a dialog, a floating panel): the hold lifts alone.
-      holdRelease = Task { [weak self] in
-        try? await Task.sleep(for: .seconds(held))
-        guard !Task.isCancelled else { return }
-        self?.land(token, timedOut: timedOut)
-      }
-      return
-    }
-    holdRelease = nil
     if timedOut { lastFallback = "landing-timeout" }
     // The carried window and the reflowed neighbours stay on the overlay until the
     // drop layout (or its timeout) takes over.
@@ -977,10 +902,6 @@ final class RibbonProxyPresenter {
           ribbonProxyLogger.notice("ring-handoff ms=\(Int((CACurrentMediaTime() - held) * 1_000))")
           // A few frames: the native ring is set, and can reach the screen a frame or two late.
           try? await Task.sleep(for: .milliseconds(40))
-        }
-        // A window opening during the handoff: lifting now would show macOS's placement.
-        while generation == fadeToken, holdUntil > CACurrentMediaTime() {
-          try? await Task.sleep(for: .milliseconds(8))
         }
         guard generation == fadeToken, let layers = self.layers else { return }
         CATransaction.begin(); CATransaction.setDisableActions(true)
@@ -1128,7 +1049,6 @@ final class RibbonProxyPresenter {
 
   func cancel(_ reason: String = "external") {
     generation &+= 1
-    holdUntil = 0
     expectedTargets = [:]; requestedTargets = [:]
     releasePointerTrack()
     drag = .idle; ownSlot = nil; previewSlot = nil; awaitingFresh = []; veiled = []; refreshing = []; standIns = []

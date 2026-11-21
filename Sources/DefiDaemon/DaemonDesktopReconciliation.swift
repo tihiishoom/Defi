@@ -106,6 +106,7 @@ func persistentWidthMismatch(
 @NavigationActor
 extension Daemon {
   func persistTopology() {
+    state.rememberApplicationPlacements()
     let topology = state.topology
     guard topology != lastPersistedTopology else { return }
     lastPersistedTopology = topology

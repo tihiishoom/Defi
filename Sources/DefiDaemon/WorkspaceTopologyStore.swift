@@ -32,6 +32,20 @@ struct WorkspaceTopologyStore {
     ).write(to: url, options: .atomic)
   }
 
+  var savedLayoutURL: URL {
+    url.deletingLastPathComponent().appending(path: "saved-layout.json")
+  }
+
+  func loadSavedLayout() throws -> [ApplicationPlacement]? {
+    guard FileManager.default.fileExists(atPath: savedLayoutURL.path) else { return nil }
+    return try JSONDecoder().decode([ApplicationPlacement].self, from: Data(contentsOf: savedLayoutURL))
+  }
+
+  func saveLayout(_ placements: [ApplicationPlacement]) throws {
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try JSONEncoder().encode(placements).write(to: savedLayoutURL, options: .atomic)
+  }
+
   static func currentSessionID() -> String? {
     // audit_session_self() returns a process-local Mach port, not an audit session ID.
     var audit = auditinfo_addr_t()

@@ -20,6 +20,7 @@ public struct MenuWorkspace: Equatable, Sendable {
 public final class MenuBarState {
   public private(set) var activeIconImage: NSImage?
   public var isInserted = true
+  public var hasSavedLayout = false
   public private(set) var workspaceStyle: WorkspaceLabelStyle = .name
   public private(set) var workspaces: [MenuWorkspace] = []
   public private(set) var activeWorkspace = ""

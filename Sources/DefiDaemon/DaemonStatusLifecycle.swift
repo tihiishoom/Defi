@@ -239,7 +239,9 @@ extension Daemon {
         icon: workspace.name.map { config.workspaces.icons[$0] ?? "square.grid.2x2" })
     } ?? []
     let workspaceStyle = config.menuBar.workspaceStyle
+    let hasSavedLayout = state.savedLayout != nil
     DispatchQueue.main.async { [menuBar] in
+      menuBar.hasSavedLayout = hasSavedLayout
       menuBar.update(activeWorkspace: workspace, workspaces: workspaces, workspaceStyle: workspaceStyle)
     }
     publishWorkspaceStateIfNeeded()

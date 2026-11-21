@@ -15,6 +15,7 @@ public struct DisconnectedMonitor: Equatable, Codable, Sendable {
 public struct WorkspaceTopology: Equatable, Codable, Sendable {
   // Optional so snapshots written before stable display identities remain readable.
   public var monitorStableIDs: [MonitorID: String]?
+  public var applicationPlacementBindings: [WindowID: String]?
   public var workspaceMonitorIDs: [WorkspaceID: String]?
   public var workspaceMonitorPositions: [WorkspaceID: Int]?
   public var monitors: [Monitor]
@@ -29,6 +30,7 @@ public struct WorkspaceTopology: Equatable, Codable, Sendable {
 
   public init(state: RuntimeState) {
     monitorStableIDs = state.monitorStableIDs
+    applicationPlacementBindings = state.placementBindings
     workspaceMonitorIDs = state.workspaceMonitorIDs
     workspaceMonitorPositions = state.workspaceMonitorPositions
     monitors = state.monitors
@@ -62,6 +64,9 @@ public struct RuntimeState: Equatable, Sendable {
   public var pendingNativeFullscreenWidthResetWindowIDs: Set<WindowID>
   public var suspendedTiledPlacements: [WindowID: SuspendedTiledPlacement]
   public var reservedEdgesByMonitor: [MonitorID: ReservedEdges]
+  public var applicationPlacements: [ApplicationPlacement] = []
+  public var savedLayout: [ApplicationPlacement]?
+  var placementBindings: [WindowID: String] = [:]
 
   public init(config: Config) {
     let names = config.workspaces.names.map(WorkspaceID.init(rawValue:))
@@ -96,6 +101,7 @@ public struct RuntimeState: Equatable, Sendable {
     self.init(config: config)
     guard let topology else { return }
     monitorStableIDs = topology.monitorStableIDs ?? [:]
+    placementBindings = topology.applicationPlacementBindings ?? [:]
     monitors = topology.monitors
     windows = topology.windows
     nextOrdinaryWorkspaceNumber = topology.nextOrdinaryWorkspaceNumber

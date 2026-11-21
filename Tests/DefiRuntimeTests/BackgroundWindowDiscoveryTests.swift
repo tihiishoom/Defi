@@ -5,7 +5,7 @@ import Testing
 
 struct BackgroundWindowDiscoveryTests {
   @Test(arguments: [false, true])
-  func reopenedApplicationUsesCurrentWorkspaceUnlessRuleAssignsIt(hasRule: Bool) {
+  func reopenedApplicationRemembersWorkspaceUnlessRuleAssignsIt(hasRule: Bool) {
     let monitorID = MonitorID(rawValue: 1)
     let dev = WorkspaceID(rawValue: "dev")
     let web = WorkspaceID(rawValue: "web")
@@ -22,6 +22,7 @@ struct BackgroundWindowDiscoveryTests {
     )
     reconcileWindows([window], config: config, frontmostProcessID: 42, state: &state)
     #expect(state.location(containing: window.id)?.workspaceID == dev)
+    state.captureLayoutSnapshot()
     reconcileWindows([], config: config, state: &state)
     state.monitors[0].activeWorkspace = web
     window = Window(
@@ -29,9 +30,13 @@ struct BackgroundWindowDiscoveryTests {
       frame: window.frame, processID: 43, monitorID: monitorID
     )
 
-    reconcileWindows([window], config: config, frontmostProcessID: 43, state: &state)
+    let reopenedConfig = hasRule ? Config(
+      workspaces: config.workspaces,
+      rules: [Rule(appID: "mail", workspace: web.rawValue)]
+    ) : config
+    reconcileWindows([window], config: reopenedConfig, frontmostProcessID: 43, state: &state)
 
-    let expectedWorkspace = hasRule ? dev : web
+    let expectedWorkspace = hasRule ? web : dev
     #expect(state.location(containing: window.id)?.workspaceID == expectedWorkspace)
     #expect(state.monitors[0].activeWorkspace == expectedWorkspace)
     #expect(state.selectedWindowID(on: monitorID) == window.id)

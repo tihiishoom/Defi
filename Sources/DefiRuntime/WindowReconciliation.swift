@@ -31,8 +31,18 @@ public func discoverWindow(
   window.forceTiling = decision.forceTiling
   window.intrinsicSize = decision.intrinsicSize
   let transientLocation = transientPlacementLocation(for: window, state: state)
+  let saved = isNativeFullscreen ? nil : state.savedPlacement(for: window)
+  if let saved, !decision.forceTiling, !decision.floating {
+    window.floating = saved.floatingFrame != nil
+    window.floatingOrigin = window.floating ? .user : nil
+  }
+  let rememberedWorkspace = transientLocation == nil && decision.workspace == nil
+    ? saved.flatMap { state.restorePlacementWorkspace($0) } : nil
+  let siblingWorkspace = transientLocation == nil && decision.workspace == nil && rememberedWorkspace == nil
+    ? state.siblingWorkspace(for: window) : nil
   let followFocusIntent = decision.followFocus && isNativelyFocused
-  let ruleLocation = decision.workspace.flatMap { state.workspaceLocation(for: $0) }
+  let targetWorkspace = decision.workspace ?? rememberedWorkspace ?? siblingWorkspace
+  let ruleLocation = targetWorkspace.flatMap { state.workspaceLocation(for: $0) }
   let monitorID =
     transientLocation?.monitorID
     ?? ruleLocation.map { state.monitors[$0.monitorIndex].id }
@@ -41,7 +51,7 @@ public func discoverWindow(
   let monitorIndex = state.monitors.firstIndex(where: { $0.id == monitorID }) ?? 0
   let workspaceID =
     transientLocation?.workspaceID
-    ?? decision.workspace
+    ?? targetWorkspace
     ?? state.monitors[monitorIndex].activeWorkspace
   guard
     let workspaceIndex = state.monitors[monitorIndex].workspaces.firstIndex(
@@ -58,6 +68,9 @@ public func discoverWindow(
     || (isFrontmostAppSpawn && !window.floating)
 
   if window.floating && !window.forceTiling {
+    if let frame = saved?.floatingFrame, transientLocation == nil {
+      window.frame = frame
+    }
     state.monitors[monitorIndex].workspaces[workspaceIndex].floatingWindows.append(window.id)
     if followsFocus {
       state.monitors[monitorIndex].workspaces[workspaceIndex].focusedFloatingWindow =
@@ -65,12 +78,33 @@ public func discoverWindow(
       state.monitors[monitorIndex].workspaces[workspaceIndex].focusedLayer = .floating
     }
   } else {
-    insertNewWindow(
+    let workspace = state.monitors[monitorIndex].workspaces[workspaceIndex]
+    let siblingColumns = workspace.columns.indices.filter { index in
+      let column = workspace.columns[index]
+      return column.windows.contains { state.windows[$0]?.appID.lowercased() == window.appID.lowercased() }
+    }
+    let siblingColumn = siblingColumns.contains(workspace.focusedColumn)
+      ? workspace.focusedColumn : siblingColumns.last
+    let restoredIndex = saved.flatMap { placement in
+      workspace.columns.firstIndex { column in
+        column.windows.contains { id in
+          state.placementBindings[id].flatMap { binding in
+            state.placementReference.first { $0.id == binding }
+          }.map { $0.columnIndex > placement.columnIndex } ?? false
+        }
+      } ?? workspace.columns.count
+    }
+    let insertionIndex = rememberedWorkspace != nil ? restoredIndex : siblingColumn.map { $0 + 1 }
+    insertPlacedWindow(
       window.id,
-      width: .fraction(decision.initialColumnWidth ?? state.layout.defaultColumnWidth),
+      width: decision.initialColumnWidth.map { .fraction($0) }
+        ?? saved?.width ?? .fraction(state.layout.defaultColumnWidth),
+      placement: rememberedWorkspace == nil ? nil : saved,
+      reference: state.placementReference, bindings: state.placementBindings,
       into: &state.monitors[monitorIndex].workspaces[workspaceIndex],
       settings: state.layout,
-      focusInsertedWindow: followsFocus
+      focusInsertedWindow: followsFocus,
+      insertionIndex: insertionIndex
     )
     if followsFocus {
       state.monitors[monitorIndex].workspaces[workspaceIndex].focusedLayer = .tiled
@@ -163,6 +197,7 @@ public func reconcileWindows(
   state: inout RuntimeState
 ) -> Set<WindowID> {
   var relocatedTransientIDs = Set<WindowID>()
+  state.rememberApplicationPlacements()
   let discoveredIDs = Set(discovered.map(\.id))
   let fullscreenWindowIDs = nativeFullscreenWindowIDs.subtracting(
     explicitlyRemovedWindowIDs
@@ -284,6 +319,7 @@ public func reconcileWindows(
   reconcileNativeFullscreenWindows(fullscreenWindowIDs, state: &state)
   state.pendingNativeFullscreenWidthResetWindowIDs.subtract(explicitlyRemovedWindowIDs)
   state.maintainWorkspaceLifecycle()
+  state.rememberApplicationPlacements()
   return relocatedTransientIDs
 }
 

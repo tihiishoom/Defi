@@ -347,6 +347,7 @@ extension Daemon {
       return .success("stopping")
     }
     guard !shouldShutdown, !restorationInFlight else { return .failure("window restoration in progress") }
+    if let response = handleSavedLayoutCommand(rawCommand) { return response }
     if commandFrameReadTask != nil {
       do {
         _ = try parseCommand(rawCommand)

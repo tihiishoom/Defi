@@ -22,7 +22,12 @@ struct MenuBarTests {
     )
     let menu = NSHostingMenu(rootView: MenuBarContent(state: state, commandHandler: { commands.append($0) }))
     menu.update()
-    #expect(menu.items.filter { !$0.isSeparatorItem }.map(\.title) == ["Workspaces", "Settings…", "Quit Defi"])
+    #expect(menu.items.filter { !$0.isSeparatorItem }.map(\.title) == [
+      "Workspaces", "Save Layout", "Restore Saved Layout", "Close Windows Outside Saved Layout…",
+      "Settings…", "Quit Defi",
+    ])
+    #expect(menu.items.first { $0.title == "Restore Saved Layout" }?.isEnabled == false)
+    #expect(menu.items.first { $0.title == "Close Windows Outside Saved Layout…" }?.isEnabled == false)
     let settings = try #require(menu.items.first { $0.title == "Settings…" })
     #expect(settings.image == nil)
     #expect(settings.keyEquivalent == ",")

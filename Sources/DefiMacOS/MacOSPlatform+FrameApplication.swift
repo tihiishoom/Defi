@@ -659,8 +659,6 @@ extension MacOSPlatform {
       ? ribbonProxySpringDuration : nil) : nil
     guard let duration else {
       presenter.supersedeIfTargetsChanged(assignments, generation: frameSubmissionGeneration)
-      // No overlay for this opening: a hold for it would only freeze the screen over the window.
-      if !moves, !opened.isDisjoint(with: monitor.windowIDs) { presenter.releaseHold() }
       let area = RibbonProxyStore.shared.screen(containing: viewport)?.visibleFrame
       // Every managed window on the display: the active ribbon by distance, then
       // other workspaces so a vertical switch finds their pictures warm.
@@ -753,39 +751,6 @@ extension MacOSPlatform {
       duration: duration,
       selectedWindowID: desiredSelectedWindowID, managedWindowIDs: Set(allWindows.keys),
       borderWindowIDs: monitor.windowIDs)
-  }
-
-  /// The display a new window lands on: the selected window's, as Defi places it there.
-  func holdWindowProxiesForOpening(_ processID: pid_t) {
-    let all = Dictionary(lastSnapshotWindows.map { ($0.id, $0) }) { first, _ in first }
-    // shortcut: an app rule sending the window to another display or floating it holds
-    // the screen still for 0.5 s; read the app rules here if that shows up.
-    guard let monitor = windowProxyMonitors.first(where: { monitor in
-      desiredSelectedWindowID.map(monitor.windowIDs.contains) ?? false
-    }) ?? windowProxyMonitors.first,
-      let display = RibbonProxyStore.shared.screen(containing: monitor.viewport)?.displayID else { return }
-    let shown = all.compactMap { id, window -> RibbonProxyWindow? in
-      let frame = latestObservedFrames[id] ?? window.frame
-      guard monitor.windowIDs.contains(id), let owner = window.processID,
-        windowProxyVisibleOverlap(frame, monitor.viewport) > 1.01 else { return nil }
-      return RibbonProxyWindow(id: id, appID: window.appID, processID: owner, from: frame, to: frame)
-    }
-    RibbonProxyPresenter.on(display).hold(windows: shown, viewport: monitor.viewport,
-      generation: frameSubmissionGeneration, processID: processID,
-      selectedWindowID: desiredSelectedWindowID, managedWindowIDs: Set(all.keys),
-      borderWindowIDs: monitor.windowIDs)
-  }
-
-  /// `frame` is nil for a dialog, a panel or a tab. A new native tab can also show
-  /// first without its tab bar, over its group's window: it takes that slot, nothing moves.
-  func releaseOpeningHoldUnlessOwnWindow(_ processID: pid_t, at frame: Rect?) {
-    let opensColumn = frame.map { frame in
-      !lastSnapshotWindows.contains { window in
-        window.processID == processID
-          && frameDistance(latestObservedFrames[window.id] ?? window.frame, frame) <= 2
-      }
-    } ?? false
-    if opensColumn { RibbonProxyPresenter.extendHolds() } else { RibbonProxyPresenter.releaseHolds() }
   }
 
   private func captureSpawnedWindows(_ windows: [RibbonProxyRefresh]) {

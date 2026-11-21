@@ -20,7 +20,8 @@ public func insertNewWindow(
   width: ColumnWidth,
   into workspace: inout Workspace,
   settings: LayoutSettings,
-  focusInsertedWindow: Bool = true
+  focusInsertedWindow: Bool = true,
+  insertionIndex: Int? = nil
 ) {
   let column = Column(window: windowID, width: width)
   guard !workspace.columns.isEmpty else {
@@ -29,9 +30,12 @@ public func insertNewWindow(
     return
   }
 
-  let index = min(workspace.focusedColumn + 1, workspace.columns.count)
+  let index = min(max(0, insertionIndex ?? (workspace.focusedColumn + 1)), workspace.columns.count)
   workspace.columns.insert(column, at: index)
-  guard focusInsertedWindow else { return }
+  guard focusInsertedWindow else {
+    if index <= workspace.focusedColumn { workspace.focusedColumn += 1 }
+    return
+  }
   workspace.focusedColumn = index
   repairWorkspaceScroll(&workspace, settings: settings)
 }

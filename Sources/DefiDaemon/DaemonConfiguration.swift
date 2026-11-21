@@ -379,7 +379,12 @@ extension Daemon {
     if command == "quit" {
       requestShutdown()
     } else {
-      _ = handle(command)
+      let response = handle(command)
+      if ["save-layout", "restore-layout", "close-extra-windows"].contains(command),
+        !response.ok || response.message == "no extra managed windows"
+      {
+        Task { @MainActor in presentSavedLayoutMessage(response.message) }
+      }
     }
   }
 }

@@ -30,6 +30,18 @@ public struct MenuBarContent: View {
           openDefiAccessibilitySettings()
         }
       }
+      Button("Save Layout", systemImage: "square.and.arrow.down") {
+        commandHandler("save-layout")
+      }
+      Button("Restore Saved Layout", systemImage: "arrow.uturn.backward") {
+        commandHandler("restore-layout")
+      }
+      .disabled(!state.hasSavedLayout)
+      Button("Close Windows Outside Saved Layout…", systemImage: "xmark.rectangle") {
+        commandHandler("close-extra-windows")
+      }
+      .disabled(!state.hasSavedLayout)
+      Divider()
       if let version = AppUpdater.shared.availableVersion {
         Button("Update to Defi \(version)", systemImage: "arrow.down.circle") {
           AppUpdater.shared.install()

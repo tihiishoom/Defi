@@ -76,56 +76,6 @@ extension MacOSPlatform {
         createdElement: kind == .windowCreated ? element : nil,
         inputTimestamp: eventInputTimestamp
       )
-      // A window opening: the screen holds still until the ribbon opens it in its slot,
-      // instead of macOS drawing it over the others first. Accessory apps' popovers and
-      // panels are not windows to open in the ribbon, nor are Defi's own surfaces beside
-      // its Settings window (SwiftUI names that one only after it is created).
-      if kind == .windowCreated, let processID, let element,
-        NSRunningApplication(processIdentifier: processID)?.activationPolicy == .regular,
-        processID != ProcessInfo.processInfo.processIdentifier || isStandardWindow(element) {
-        // Only the latest window's check may release the hold: an earlier one timing out
-        // would cut short the hold a later window still waits on.
-        let opening = ProcessInfo.processInfo.systemUptime
-        NavigationActor.enqueue { [weak self] in
-          self?.latestOpening = opening
-          self?.holdWindowProxiesForOpening(processID)
-        }
-        // An app's later dialogs, panels and native tabs open where they are: checked
-        // after the hold, off the main thread, since the read waits on the app.
-        let created = UncheckedSendable(value: element), checksOwnWindow = (previousWindowCount ?? 0) > 0
-        let createdNumber = self?.windowIDProvider.windowID(for: element)
-        DispatchQueue.global(qos: .userInteractive).async { [weak self] in
-          // Picture in picture floats above the overlay and never opens a column: holding
-          // the screen for its layout froze every window behind it.
-          if let createdNumber, windowFloatsAboveRibbon(createdNumber) {
-            return NavigationActor.enqueue { [weak self] in
-              if self?.latestOpening == opening { RibbonProxyPresenter.releaseHolds() }
-            }
-          }
-          let shown = applicationShownWindowIDs(processID)
-          if checksOwnWindow, let frame = ownWindowFrame(created.value) {
-            NavigationActor.enqueue { [weak self] in
-              guard let self, latestOpening == opening else { return }
-              releaseOpeningHoldUnlessOwnWindow(processID, at: frame)
-            }
-            return
-          }
-          // A first window, or an app too slow to answer (Finder): WindowServer showing it
-          // a new standard window confirms one, and the hold waits for its layout. The
-          // screen stays held while this check runs, and moves again as soon as it fails.
-          NavigationActor.enqueue { RibbonProxyPresenter.extendHolds(to: 0.8) }
-          let deadline = ProcessInfo.processInfo.systemUptime + 0.8
-          while ProcessInfo.processInfo.systemUptime < deadline {
-            if !applicationShownWindowIDs(processID).isSubset(of: shown) {
-              return NavigationActor.enqueue { RibbonProxyPresenter.extendHolds() }
-            }
-            usleep(20_000)
-          }
-          NavigationActor.enqueue { [weak self] in
-            if self?.latestOpening == opening { RibbonProxyPresenter.releaseHolds() }
-          }
-        }
-      }
       // An app brought forward (Command-Tab, the Dock): its focused window alone is read, so
       // the ribbon moves as at a keyboard command instead of after a read of all its windows.
       if kind == .focus, let processID, let self,
@@ -819,18 +769,6 @@ func applicationFocusedWindow(_ processID: pid_t) -> AXUIElement? {
   return (value as! AXUIElement)
 }
 
-/// Whether WindowServer shows this window above the standard level.
-func windowFloatsAboveRibbon(_ number: CGWindowID) -> Bool {
-  (ribbonProxyWindowDescriptions([number]).first?[kCGWindowLayer as String] as? Int).map { $0 > 0 } ?? false
-}
-
-/// The standard-level windows WindowServer shows for an app, from its public list.
-func applicationShownWindowIDs(_ processID: pid_t) -> Set<WindowID> {
-  Set(ribbonProxyOnScreenWindows().filter { window in
-    window.processID == processID && window.layer == 0 && window.frame.width > 100 && window.frame.height > 100
-  }.map(\.id))
-}
-
 /// The application's only window, read with the same short timeout; nil for several.
 func applicationSingleWindow(_ processID: pid_t) -> AXUIElement? {
   let application = AXUIElementCreateApplication(processID)
@@ -839,10 +777,4 @@ func applicationSingleWindow(_ processID: pid_t) -> AXUIElement? {
   guard AXUIElementCopyAttributeValue(application, kAXWindowsAttribute as CFString, &value) == .success,
     let windows = value as? [AXUIElement], windows.count == 1 else { return nil }
   return windows[0]
-}
-
-private func isStandardWindow(_ element: AXUIElement) -> Bool {
-  var subrole: CFTypeRef?
-  return AXUIElementCopyAttributeValue(element, kAXSubroleAttribute as CFString, &subrole) == .success
-    && subrole as? String == kAXStandardWindowSubrole
 }

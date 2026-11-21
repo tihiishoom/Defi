@@ -141,6 +141,7 @@ final class Daemon {
   var layoutPlansByMonitor: [MonitorID: MonitorLayoutPlan] = [:]
   var shouldShutdown = false
   var restorationInFlight = false
+  var layoutWindowClosureInFlight = false
   var shutdownTask: Task<Void, Never>?
   var signalSources: [DispatchSourceSignal] = []
   @MainActor var configWatcher: ConfigFileWatcher?
@@ -248,6 +249,8 @@ final class Daemon {
       ?? "unavailable:\(UUID().uuidString)"
     let restoredTopology = try? topologyStore.load(sessionID: topologySessionID)
     state = RuntimeState(config: config, topology: restoredTopology)
+    state.savedLayout = try? topologyStore.loadSavedLayout()
+    state.loadApplicationPlacements(state.savedLayout ?? [])
     lastPersistedTopology = restoredTopology
     platform.setCommandDiagnosticHandler { [weak self, weak diagnostics] sample in
       diagnostics?.record(sample)
