@@ -484,10 +484,11 @@ func transientRootWindowID(
   return root
 }
 
-func transientDescendants(
+public func transientDescendants(
   of ownerWindowIDs: Set<WindowID>,
   windows: [WindowID: Window]
 ) -> Set<WindowID> {
+  guard !ownerWindowIDs.isEmpty else { return [] }
   var descendants = Set<WindowID>()
   var owners = ownerWindowIDs
   while true {
@@ -559,6 +560,7 @@ private func toggleFocusedFloating(
   guard let workspaceIndex else { throw ReducerError.noMonitor }
   var workspace = state.monitors[monitorIndex].workspaces[workspaceIndex]
   if let windowID = effectiveSelectedFloatingWindowID(in: workspace) {
+    guard state.windows[windowID]?.isTransient != true else { return }
     state.suspendedTiledPlacements[windowID] = nil
     removeWindow(windowID, from: &workspace, settings: state.layout)
     insertNewWindow(windowID, into: &workspace, settings: state.layout)

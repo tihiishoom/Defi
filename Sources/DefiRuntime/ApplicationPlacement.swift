@@ -49,7 +49,7 @@ extension RuntimeState {
       monitor.workspaces.flatMap { $0.columns.flatMap(\.windows) + $0.floatingWindows }
     }.filter { id in
       guard let window = windows[id] else { return false }
-      return !window.isModal && window.transientOwnerID == nil
+      return !window.isTransient
         && window.floatingOrigin != .automatic && !nativeFullscreenWindowIDs.contains(id)
     }
   }
@@ -97,7 +97,7 @@ extension RuntimeState {
     let matches = layoutSnapshotMatches()
     var restored = 0
     for id in snapshotEligibleWindowIDs {
-      guard var window = windows[id], !window.isModal, window.transientOwnerID == nil,
+      guard var window = windows[id], !window.isTransient,
         window.floatingOrigin != .automatic, !nativeFullscreenWindowIDs.contains(id)
       else { continue }
       guard let placement = matches[id] else { continue }
@@ -225,7 +225,7 @@ extension RuntimeState {
   }
 
   public mutating func rememberApplicationPlacements() {
-    placementBindings = placementBindings.filter { windows[$0.key] != nil }
+    placementBindings = placementBindings.filter { windows[$0.key]?.isTransient == false }
     for monitor in monitors {
       for (workspacePosition, workspace) in monitor.workspaces.enumerated() {
         for (columnIndex, column) in workspace.columns.enumerated() {
@@ -269,7 +269,7 @@ extension RuntimeState {
     workspacePosition: Int, columnIndex: Int, width: ColumnWidth?
   ) {
     guard let window = windows[windowID], !window.appID.isEmpty,
-      !window.isModal, window.transientOwnerID == nil,
+      !window.isTransient,
       window.floatingOrigin != .automatic, !nativeFullscreenWindowIDs.contains(windowID)
     else { return }
     let occupied = Set(placementBindings.values)
@@ -307,7 +307,7 @@ extension RuntimeState {
   }
 
   mutating func savedPlacement(for window: Window) -> ApplicationPlacement? {
-    guard !window.appID.isEmpty, !window.isModal, window.transientOwnerID == nil,
+    guard !window.appID.isEmpty, !window.isTransient,
       window.floatingOrigin != .automatic
     else { return nil }
     let occupied = Set(placementBindings.filter { windows[$0.key] != nil }.values)
@@ -350,8 +350,7 @@ extension RuntimeState {
   }
 
   func siblingWorkspace(for window: Window) -> WorkspaceID? {
-    guard !window.floating, !window.appID.isEmpty, !window.isModal,
-      window.transientOwnerID == nil
+    guard !window.floating, !window.appID.isEmpty, !window.isTransient
     else { return nil }
     let candidates = monitors.filter { window.monitorID == nil || $0.id == window.monitorID }
       .flatMap { monitor in
@@ -360,7 +359,7 @@ extension RuntimeState {
             column.windows.contains {
               guard let sibling = windows[$0] else { return false }
               return sibling.appID.lowercased() == window.appID.lowercased()
-                && !sibling.isModal && sibling.transientOwnerID == nil
+                && !sibling.isTransient
             }
           }
         }.map { (monitor, $0) }

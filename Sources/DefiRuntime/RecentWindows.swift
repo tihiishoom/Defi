@@ -3,9 +3,10 @@ import DefiModel
 extension RuntimeState {
   /// Records confirmed focus only. Browsing the switcher never changes its order.
   public mutating func recordRecentWindow(_ id: WindowID) {
-    recentWindowIDs.removeAll { $0 == id || windows[$0] == nil }
-    guard windows[id] != nil, location(containing: id) != nil else { return }
-    recentWindowIDs.insert(id, at: 0)
+    let owner = transientRootWindowID(id, windows: windows)
+    recentWindowIDs.removeAll { $0 == owner || windows[$0]?.isTransient != false }
+    guard windows[owner]?.isTransient == false, location(containing: owner) != nil else { return }
+    recentWindowIDs.insert(owner, at: 0)
   }
 
   public func recentWindows(selected: WindowID?) -> [WindowID] {
@@ -13,10 +14,11 @@ extension RuntimeState {
       monitor.workspaces.flatMap { workspace in
         workspace.columns.flatMap(\.windows) + workspace.floatingWindows
       }
-    }.filter { windows[$0] != nil }
+    }.filter { windows[$0]?.isTransient == false }
     let available = Set(managed)
     var seen = Set<WindowID>()
-    return ([selected].compactMap { $0 } + recentWindowIDs + managed).filter {
+    let selectedOwner = selected.map { transientRootWindowID($0, windows: windows) }
+    return ([selectedOwner].compactMap { $0 } + recentWindowIDs + managed).filter {
       available.contains($0) && seen.insert($0).inserted
     }
   }

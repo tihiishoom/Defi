@@ -26,6 +26,7 @@ func updateFloatingWindowFrames(
     for window in windows where trackedFloatingIDs.contains(window.id) {
       if !displayGeometryChanged,
         mouseResizeGestureActive,
+        !window.isTransient,
         !platform.isWindowHidden(window.id),
         let targetMonitorID = window.monitorID,
         moveFloatingWindow(window.id, to: targetMonitorID, state: &state)

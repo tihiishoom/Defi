@@ -372,3 +372,43 @@ struct TransientReconciliationTests {
     #expect(state.selectedWindowID(on: secondMonitor) == selectedTransient.id)
   }
 }
+
+extension TransientReconciliationTests {
+  @Test
+  func aLateDialogStaysWithItsTabAndFocusReturnsToTheOwner() throws {
+    let monitorID = MonitorID(rawValue: 1)
+    let ownerID = WindowID(rawValue: 1)
+    let otherTabID = WindowID(rawValue: 2)
+    let dialogID = WindowID(rawValue: 3)
+    let toolsID = WindowID(rawValue: 4)
+    let config = Config()
+    let frame = Rect(x: 0, y: 0, width: 600, height: 800)
+    var state = RuntimeState(config: config)
+    state.attachMonitor(monitorID)
+    let owner = Window(id: ownerID, appID: "editor", title: "Owner", frame: frame)
+    let otherTab = Window(id: otherTabID, appID: "editor", title: "Other", frame: frame)
+    var dialog = Window(id: dialogID, appID: "editor", title: "Save", frame: frame)
+    let tools = Window(id: toolsID, appID: "editor", title: "Tools", frame: frame, floating: true)
+    _ = reconcileWindows([owner, otherTab, dialog, tools], config: config, state: &state)
+    var tabColumn = Column(windows: [ownerID, otherTabID, dialogID], focusedWindow: 1, width: .fraction(0.5))
+    tabColumn.display = .tabbed
+    state.monitors[0].workspaces[0].columns = [tabColumn]
+
+    dialog.transientOwnerID = ownerID
+    _ = reconcileWindows([owner, otherTab, dialog, tools], config: config, state: &state)
+    #expect(state.monitors[0].workspaces[0].columns.first?.windows == [ownerID, otherTabID])
+    #expect(state.monitors[0].workspaces[0].floatingWindows.contains(dialogID))
+    #expect(transientDescendants(of: [ownerID], windows: state.windows) == [dialogID])
+
+    focusWindow(dialogID, state: &state)
+    #expect(state.monitors[0].workspaces[0].columns.first?.focusedWindow == 0)
+    state.recordRecentWindow(dialogID)
+    #expect(state.recentWindowIDs.first == ownerID)
+    #expect(state.recentWindows(selected: dialogID) == [ownerID, otherTabID, toolsID])
+    try reduce(.toggleFloating, on: monitorID, state: &state)
+    #expect(state.windows[dialogID]?.floating == true)
+
+    _ = reconcileWindows([owner, otherTab, tools], config: config, state: &state)
+    #expect(state.selectedWindowID(on: monitorID) == ownerID)
+  }
+}

@@ -164,7 +164,17 @@ extension Daemon {
             )
           }
 
+          let hiddenTransients = transientDescendants(
+            of: inactiveTabs.union(strip.parkedWindowIDs), windows: state.windows
+          )
           for assignment in floatingAssignments(in: workspace) {
+            if hiddenTransients.contains(assignment.windowID) {
+              monitorAssignments.append(FrameAssignment(
+                windowID: assignment.windowID, frame: park(assignment)
+              ))
+              monitorHiddenWindowIDs.insert(assignment.windowID)
+              continue
+            }
             monitorBorderAssignments.append(assignment)
             if forceFloatingFrameWrites
               || forcedFloatingWindowIDs.contains(assignment.windowID)

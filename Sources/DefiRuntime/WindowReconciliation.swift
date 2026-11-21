@@ -22,20 +22,22 @@ public func discoverWindow(
   }
 
   var window = original
+  window.forceTiling = decision.forceTiling || original.forceTiling
   window.floating =
-    ((original.floating && !isNativeFullscreen) || decision.floating)
-    && !decision.forceTiling
-  if decision.forceTiling {
+    (((original.floating || original.isTransient) && !isNativeFullscreen) || decision.floating)
+    && !window.forceTiling
+  if window.forceTiling {
     window.floatingOrigin = nil
   } else if decision.floating {
     window.floatingOrigin = .configured
+  } else if window.floating && window.isTransient {
+    window.floatingOrigin = .automatic
   }
-  window.forceTiling = decision.forceTiling
   window.intrinsicSize = decision.intrinsicSize
   let transientLocation = transientPlacementLocation(for: window, state: state)
   let saved = isNativeFullscreen ? nil : state.savedPlacement(for: window)
   window.stackHeightFraction = saved?.stackHeightFraction
-  if let saved, !decision.forceTiling, !decision.floating {
+  if let saved, !window.forceTiling, !decision.floating {
     window.floating = saved.floatingFrame != nil
     window.floatingOrigin = window.floating ? .user : nil
   }
@@ -128,7 +130,7 @@ public func transientPlacementLocation(
   func location(containing windowID: WindowID) -> (monitorID: MonitorID, workspaceID: WorkspaceID)? {
     locations?[windowID] ?? state.location(containing: windowID)
   }
-  guard window.isModal || window.floatingOrigin == .automatic else { return nil }
+  guard window.isTransient || window.floatingOrigin == .automatic else { return nil }
   if let ownerID = window.transientOwnerID,
     let ownerLocation = location(containing: ownerID)
   {
@@ -222,8 +224,21 @@ public func reconcileWindows(
     if explicitlyRemovedWindowIDs.contains(existingID) {
       adjustNativeFullscreenPlacements(afterRemoving: existingID, state: &state)
     }
+    let survivingOwner = state.windows[existingID]?.transientOwnerID.flatMap { ownerID -> WindowID? in
+      guard discoveredIDs.contains(ownerID),
+        let childLocation = state.location(containing: existingID),
+        let ownerLocation = state.location(containing: ownerID),
+        childLocation.monitorID == ownerLocation.monitorID,
+        childLocation.workspaceID == ownerLocation.workspaceID,
+        state.selectedWindowID(on: childLocation.monitorID) == existingID
+      else { return nil }
+      return ownerID
+    }
     removeWindowFromEveryWorkspace(existingID, state: &state)
     state.windows[existingID] = nil
+    if let survivingOwner {
+      focusWindow(survivingOwner, state: &state)
+    }
     state.nativeFullscreenFloatingWindowIDs.remove(existingID)
     state.nativeFullscreenTiledPlacements[existingID] = nil
     state.pendingNativeFullscreenWidthResetWindowIDs.remove(existingID)
@@ -244,7 +259,13 @@ public func reconcileWindows(
     } else {
       var updated = window
       if let existing = state.windows[window.id] {
-        if existing.floatingOrigin == .automatic,
+        if updated.isTransient, !existing.forceTiling, !fullscreenWindowIDs.contains(window.id) {
+          updated.floating = true
+          updated.floatingOrigin = existing.floatingOrigin == .configured ? .configured : .automatic
+          if !existing.floating {
+            reclassifyTiledWindowAsAutomaticFloater(window.id, state: &state)
+          }
+        } else if existing.floatingOrigin == .automatic,
           !fullscreenWindowIDs.contains(window.id)
         {
           reclassifyAutomaticWindow(
