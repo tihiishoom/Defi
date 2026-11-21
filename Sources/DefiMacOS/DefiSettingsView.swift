@@ -297,6 +297,7 @@ private struct GeneralSettingsView: View {
           Text("Name only").tag(WorkspaceLabelStyle.name)
           Text("Icon only").tag(WorkspaceLabelStyle.icon)
           Text("Icon and name").tag(WorkspaceLabelStyle.iconAndName)
+          Text("Workspace strip").tag(WorkspaceLabelStyle.strip)
         }
         .settingsSearchTarget(.workspaceDisplay)
       }

@@ -7,11 +7,13 @@ public struct MenuWorkspace: Equatable, Sendable {
   public let id: String
   public let label: String
   public let icon: String?
+  public let isOccupied: Bool
 
-  public init(id: String, label: String, icon: String? = nil) {
+  public init(id: String, label: String, icon: String? = nil, isOccupied: Bool = true) {
     self.id = id
     self.label = label
     self.icon = icon
+    self.isOccupied = isOccupied
   }
 }
 
