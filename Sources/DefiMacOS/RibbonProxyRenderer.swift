@@ -1614,6 +1614,16 @@ func ribbonProxySpringVelocity(from: CGPoint, to: CGPoint, elapsed: TimeInterval
 }
 
 func ribbonProxyMove(_ layer: CALayer, from: CGRect, to: CGRect, velocity: CGPoint = .zero) {
+  if let border = layer as? CAShapeLayer, border.name == "border" {
+    if from.size != to.size, let target = border.path {
+      let origin = border.presentation()?.path ?? windowBorderCornerPath(
+        in: CGRect(origin: .zero, size: from.size).insetBy(dx: border.lineWidth / 2, dy: border.lineWidth / 2),
+        radius: border.cornerRadius)
+      ribbonProxySpring(border, "path", origin, target)
+    } else {
+      border.removeAnimation(forKey: "path")
+    }
+  }
   layer.frame = to
   // A still layer gets no spring: a sublayer animated in place under its moving window made
   // the compositor redraw the whole tree each frame, about three dropped frames per motion.

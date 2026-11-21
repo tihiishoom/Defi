@@ -415,6 +415,18 @@ struct RibbonProxyTests {
     #expect(stroke.contains(CGPoint(x: 24, y: 606)))
     #expect(!stroke.contains(CGPoint(x: 402, y: 606)))
     #expect(!stroke.contains(CGPoint(x: 2, y: 302)))
+    let next = try #require(ribbonProxySublayerFrames(layer, size: CGSize(width: 1000, height: 700),
+      borderStyle: WindowBorderStyle(config: BordersConfig(placement: "outside"))).first?.1)
+    ribbonProxyMove(ring, from: try #require(frames.first?.1), to: next)
+    let pathSpring = try #require(ring.animation(forKey: "path") as? CASpringAnimation)
+    let sizeSpring = try #require(ring.animation(forKey: "bounds.size") as? CASpringAnimation)
+    let origin = try #require(pathSpring.fromValue) as! CGPath
+    let target = try #require(pathSpring.toValue) as! CGPath
+    #expect(origin.boundingBoxOfPath == path.boundingBoxOfPath)
+    #expect(target.boundingBoxOfPath == CGRect(x: 2, y: 2, width: 1004, height: 704))
+    #expect(pathSpring.stiffness == sizeSpring.stiffness && pathSpring.damping == sizeSpring.damping)
+    ribbonProxyMove(ring, from: next, to: next)
+    #expect(ring.animation(forKey: "path") == nil)
   }
 
 }
