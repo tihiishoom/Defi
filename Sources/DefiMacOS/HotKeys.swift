@@ -27,6 +27,7 @@ let keyboardCapturedByAnotherApp: @Sendable () -> Bool = {
 
 @NavigationActor
 public final class HotKeyManager {
+  public typealias RecentWindowsKeyHandler = @Sendable (UInt16, UInt64) -> Void
   public typealias Handler = @NavigationActor @Sendable (HotKeyInvocation) -> Void
   public typealias PointerMotionHandler =
     @NavigationActor @Sendable (PointerMotionInvocation) -> Void
@@ -272,6 +273,11 @@ public final class HotKeyManager {
     context?.resetPointerWindowTransition()
   }
 
+  public var recentWindowsInputSetter: @Sendable (RecentWindowsKeyHandler?) -> Void {
+    let context = self.context
+    return { context?.setRecentWindowsHandler($0) }
+  }
+
   public var overviewModeSetter: @Sendable (Bool) -> Void {
     let context = context
     return { context?.setOverviewModeEnabled($0) }
@@ -334,6 +340,7 @@ final class InputMonitor: @unchecked Sendable {
   private var pointerDeliveryGeneration: UInt64 = 0
   private var lastPointerDeliveryTimestamp: TimeInterval?
   private var capturedModifierReleaseState = CapturedHotKeyModifierReleaseState()
+  private var recentWindowsHandler: HotKeyManager.RecentWindowsKeyHandler?
   private var overviewModeEnabled = false
   private var cheatsheetVisible = false
   private let cheatsheetModifierBits: UInt64?
@@ -521,6 +528,9 @@ final class InputMonitor: @unchecked Sendable {
     if tracksGeneralUserInput {
       recordGeneralUserInput(type: type, event: event, isDefiTextInput: isDefiTextInput)
     }
+    if lock.withLock({ recentWindowsHandler != nil }), isKeyDown || type == .flagsChanged {
+      return Unmanaged.passUnretained(event)
+    }
     if isDefiTextInput && (isKeyDown || type == .flagsChanged) {
       return Unmanaged.passUnretained(event)
     }
@@ -633,6 +643,13 @@ final class InputMonitor: @unchecked Sendable {
       return Unmanaged.passUnretained(event)
     }
     guard type == .keyDown else { return Unmanaged.passUnretained(event) }
+    if let picker = lock.withLock({ recentWindowsHandler }) {
+      let code = UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
+      picker(code, event.flags.rawValue)
+      // Preserve the system application switcher while dismissing our picker.
+      return event.flags.contains(.maskCommand) && code == 48
+        ? Unmanaged.passUnretained(event) : nil
+    }
     if let record = ShortcutRecorderButton.captureHandler.withLock({ $0 }) {
       capturedModifierReleaseState.reset()
       recordGeneralUserInput(type: type, event: event, isDefiTextInput: true)
@@ -704,6 +721,10 @@ final class InputMonitor: @unchecked Sendable {
     lock.lock()
     cheatsheetVisible = visible
     lock.unlock()
+  }
+
+  func setRecentWindowsHandler(_ handler: HotKeyManager.RecentWindowsKeyHandler?) {
+    lock.withLock { recentWindowsHandler = handler }
   }
 
   func setOverviewModeEnabled(_ enabled: Bool) {

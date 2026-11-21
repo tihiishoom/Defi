@@ -20,10 +20,15 @@ public final class RecentWindowsController {
   private var panel: RecentWindowsPanel?
   private var heldModifiers: NSEvent.ModifierFlags = []
   private var previews = false
+  private let inputMode: (HotKeyManager.RecentWindowsKeyHandler?) -> Void
   private let choose: (RecentWindowEntry) -> Void
   public var isOpen: Bool { panel?.isVisible == true }
 
-  public init(choose: @escaping (RecentWindowEntry) -> Void) { self.choose = choose }
+  public init(inputMode: @escaping (HotKeyManager.RecentWindowsKeyHandler?) -> Void,
+    choose: @escaping (RecentWindowEntry) -> Void) {
+    self.inputMode = inputMode
+    self.choose = choose
+  }
 
   public func open(entries: [RecentWindowEntry], previews: Bool) {
     guard !entries.isEmpty else { return }
@@ -46,6 +51,12 @@ public final class RecentWindowsController {
     }
     panel.onResign = { [weak self] in self?.close() }
     self.panel = panel
+    inputMode { [weak self] code, flags in
+      DispatchQueue.main.async { [weak self] in
+        if flags & CGEventFlags.maskCommand.rawValue != 0 && code == 48 { self?.close() }
+        else { self?.key(code: code, shift: flags & CGEventFlags.maskShift.rawValue != 0) }
+      }
+    }
     render()
     panel.makeKeyAndOrderFront(nil)
   }
@@ -57,6 +68,7 @@ public final class RecentWindowsController {
   }
 
   public func close() {
+    inputMode(nil)
     panel?.onResign = nil
     panel?.orderOut(nil)
     panel = nil
@@ -71,10 +83,14 @@ public final class RecentWindowsController {
   }
 
   private func key(_ event: NSEvent) {
-    switch event.keyCode {
+    key(code: event.keyCode, shift: event.modifierFlags.contains(.shift))
+  }
+
+  private func key(code: UInt16, shift: Bool) {
+    switch code {
     case 53: close()
     case 36, 76: commit()
-    case 48: advance(backward: event.modifierFlags.contains(.shift))
+    case 48: advance(backward: shift)
     case 123, 126: advance(backward: true)
     case 124, 125: advance(backward: false)
     default: break

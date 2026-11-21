@@ -20,13 +20,14 @@ extension Daemon {
     }
     guard !entries.isEmpty else { return .success() }
     let previews = config.overview.windowPreviews
+    let generation = recentWindowsGeneration.withLock { value in value &+= 1; return value }
     DispatchQueue.main.async { [weak self] in
-      guard let self else { return }
+      guard let self, recentWindowsGeneration.withLock({ $0 == generation }) else { return }
       if let controller = recentWindowsController, controller.isOpen {
         controller.advance(backward: false)
         return
       }
-      let controller = RecentWindowsController { [weak self] entry in
+      let controller = RecentWindowsController(inputMode: recentWindowsInputMode) { [weak self] entry in
         NavigationActor.enqueue { [weak self] in
           guard let self, desktopSessionActive, !overviewState.isOpen, let location = state.location(containing: entry.window.id),
             state.windows[entry.window.id]?.appID == entry.window.appID else { return }
@@ -40,4 +41,9 @@ extension Daemon {
     }
     return .success()
   }
+  func closeRecentWindows() {
+    recentWindowsGeneration.withLock { $0 &+= 1 }
+    DispatchQueue.main.async { [weak self] in self?.recentWindowsController?.close() }
+  }
+
 }

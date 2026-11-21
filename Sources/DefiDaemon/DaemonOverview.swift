@@ -124,6 +124,7 @@ final class OverviewToggleState: @unchecked Sendable {
 @NavigationActor
 extension Daemon {
   func toggleOverview() -> CommandResponse {
+    closeRecentWindows()
     guard !state.monitors.isEmpty else {
       return .failure("overview unavailable before monitor discovery")
     }

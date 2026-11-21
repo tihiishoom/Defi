@@ -117,6 +117,8 @@ final class Daemon {
   @MainActor lazy var columnTabBars = ColumnTabBarManager()
   @MainActor var overviewController: OverviewController?
   @MainActor var recentWindowsController: RecentWindowsController?
+  @MainActor var recentWindowsInputMode: @Sendable (HotKeyManager.RecentWindowsKeyHandler?) -> Void = { _ in }
+  nonisolated let recentWindowsGeneration = Mutex<UInt64>(0)
   var cheatsheetState = CheatsheetState()
   @MainActor var cheatsheetController: CheatsheetController?
   var cheatsheetHoldTask: Task<Void, Never>?
@@ -333,7 +335,10 @@ final class Daemon {
     if active { invalidateDisplayArrangement() }
     displayPointerRouter.setActive(active)
     desktopSessionActive = active
-    if !active { handleCheatsheetInput(.dismiss) }
+    if !active {
+      handleCheatsheetInput(.dismiss)
+      closeRecentWindows()
+    }
     desktopSessionGeneration &+= 1
     guard active else {
       cancelPendingCommandFrameRead()
